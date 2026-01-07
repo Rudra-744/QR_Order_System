@@ -130,9 +130,11 @@ npm install
 Create a `.env` file in the `Backend` folder:
 ```env
 PORT=5000
-MONGO_URI=mongodb://localhost:27017/qr-order-system
-JWT_SECRET=your_super_secret_jwt_key
+MONGO_URI=your_mongodb_connection_string
+JWT_SECRET=your_jwt_secret_here
 ```
+
+> ⚠️ **Note**: Replace `your_mongodb_connection_string` with your actual MongoDB URI and generate a strong random string for `JWT_SECRET`.
 
 Seed the database with sample menu items:
 ```bash
