@@ -1,0 +1,82 @@
+require('dotenv').config();
+const mongoose = require('mongoose');
+const MenuItem = require('./models/MenuItem'); // Path check kar lena
+
+mongoose.connect(process.env.MONGO_URI)
+  .then(async () => {
+    console.log('🌱 Seeding "Mrs Jha Kitchen" Menu...');
+    
+    // Purana data clear karega taaki duplicate na ho
+    await MenuItem.deleteMany({});
+
+    const items = [
+      // === DRY/SOYA LAPHING ===
+      { name: "OG Laphing", price: 109, category: "Laphing", isAvailable: true },
+      { name: "Mayo Laphing", price: 129, category: "Laphing", isAvailable: true },
+      { name: "Cheesy Laphing", price: 149, category: "Laphing", isAvailable: true },
+      { name: "Soupy Laphing", price: 139, category: "Laphing", isAvailable: true },
+      { name: "Soup Laphing", price: 159, category: "Laphing", isAvailable: true },
+      { name: "Peri Peri Laphing", price: 179, category: "Laphing", isAvailable: true },
+      { name: "Mayo Peri Peri Laphing", price: 219, category: "Laphing", isAvailable: true },
+      { name: "Cheesy Peri Peri Laphing", price: 239, category: "Laphing", isAvailable: true },
+      { name: "Nachos Laphing", price: 229, category: "Laphing", isAvailable: true },
+      { name: "Mayo Nachos Laphing", price: 239, category: "Laphing", isAvailable: true },
+      { name: "Cheesy Nachos Laphing", price: 259, category: "Laphing", isAvailable: true },
+      { name: "Peri Peri Nachos Laphing", price: 299, category: "Laphing", isAvailable: true },
+      { name: "White Laphing", price: 209, category: "Laphing", isAvailable: true },
+
+      // === NOODLES ===
+      { name: "Veg Ramen", price: 199, category: "Noodles", isAvailable: true },
+      { name: "Kimchi Ramen", price: 199, category: "Noodles", isAvailable: true },
+      { name: "Cheesy Ramen", price: 199, category: "Noodles", isAvailable: true },
+      { name: "Plain Maggi", price: 69, category: "Noodles", isAvailable: true },
+      { name: "Masala Maggi", price: 89, category: "Noodles", isAvailable: true },
+      { name: "Cheese Maggi", price: 99, category: "Noodles", isAvailable: true },
+
+      // === MOMOS ===
+      { name: "Peri Peri Momos", price: 149, category: "Momos", isAvailable: true },
+      { name: "Paneer Momos", price: 149, category: "Momos", isAvailable: true },
+      { name: "Cheese & Corn Momos", price: 149, category: "Momos", isAvailable: true },
+      { name: "Jain Momos", price: 149, category: "Momos", isAvailable: true },
+      { name: "Pan Fry Momos", price: 169, category: "Momos", isAvailable: true },
+      { name: "Jhol Momos", price: 199, category: "Momos", isAvailable: true },
+      { name: "Soupy Momos", price: 199, category: "Momos", isAvailable: true },
+      { name: "Cheezy Momos", price: 199, category: "Momos", isAvailable: true },
+      { name: "Chilli Momos", price: 289, category: "Momos", isAvailable: true },
+      { name: "Schezwan Momos", price: 289, category: "Momos", isAvailable: true },
+
+      // === SIDES ===
+      { name: "Masala Corn", price: 179, category: "Sides", isAvailable: true },
+      { name: "Garlic Bread", price: 279, category: "Sides", isAvailable: true },
+      { name: "Jalapeno & Cheese Garlic Bread", price: 299, category: "Sides", isAvailable: true },
+      { name: "Paneer Tikka Garlic Bread", price: 299, category: "Sides", isAvailable: true },
+      { name: "Peri Peri French Fries", price: 219, category: "Sides", isAvailable: true },
+      { name: "Saucy Fries", price: 249, category: "Sides", isAvailable: true },
+      { name: "Spring Roll", price: 229, category: "Sides", isAvailable: true },
+      { name: "Ramen Wrap", price: 499, category: "Sides", isAvailable: true },
+      { name: "Nachos", price: 249, category: "Sides", isAvailable: true },
+      { name: "Nachos Chaat", price: 399, category: "Sides", isAvailable: true },
+
+      // === DESSERTS ===
+      { name: "Hazelnut Brownie", price: 199, category: "Desserts", isAvailable: true },
+      { name: "Brownie w/ Icecream", price: 299, category: "Desserts", isAvailable: true },
+      { name: "Choco Lava", price: 199, category: "Desserts", isAvailable: true },
+
+      // === BEVERAGES ===
+      { name: "Masala Coke", price: 149, category: "Beverages", isAvailable: true },
+      { name: "Shikanji", price: 149, category: "Beverages", isAvailable: true },
+      { name: "Cold Coffee", price: 159, category: "Beverages", isAvailable: true },
+      { name: "Cold Coffee w/ Icecream", price: 199, category: "Beverages", isAvailable: true },
+      { name: "Strawberry Cold Coffee", price: 299, category: "Beverages", isAvailable: true },
+      { name: "Nutella Cold Coffee", price: 299, category: "Beverages", isAvailable: true },
+      { name: "Hot Coffee", price: 109, category: "Beverages", isAvailable: true },
+    ];
+
+    await MenuItem.insertMany(items);
+    console.log('✅ Menu Loaded Successfully! Total items:', items.length);
+    process.exit();
+  })
+  .catch(err => {
+    console.log('❌ Error:', err);
+    process.exit(1);
+  });
