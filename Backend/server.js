@@ -10,13 +10,21 @@ const app = express();
 const httpServer = createServer(app);
 const cookieParser = require("cookie-parser");
 
+const allowedOrigins = [
+  "http://localhost:5173",
+  "http://localhost:3000",
+  process.env.FRONTEND_URL,
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: [
-      "http://localhost:5173",
-      "http://192.168.192.6:5173",
-      "https://solved-preserve-interracial-subdivision.trycloudflare.com",
-    ],
+    origin: function (origin, callback) {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(null, true);
+      }
+    },
     credentials: true,
     methods: ["GET", "POST", "PUT", "DELETE"],
   }),

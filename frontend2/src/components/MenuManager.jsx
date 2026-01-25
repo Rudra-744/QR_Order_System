@@ -19,7 +19,7 @@ import {
   FiEdit2,
 } from "react-icons/fi";
 
-const API_URL = "http://localhost:5000/api";
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const MenuManager = ({ onClose }) => {
   const [items, setItems] = useState([]);
@@ -52,7 +52,7 @@ const MenuManager = ({ onClose }) => {
         duration: 0.4,
         ease: "power3.inOut",
       },
-      0
+      0,
     );
 
     tl.to(
@@ -62,7 +62,7 @@ const MenuManager = ({ onClose }) => {
         duration: 0.3,
         ease: "power2.out",
       },
-      0
+      0,
     );
   };
 
@@ -83,7 +83,7 @@ const MenuManager = ({ onClose }) => {
         duration: 0.3,
         ease: "power2.out",
       },
-      0
+      0,
     );
 
     tl.to(
@@ -93,7 +93,7 @@ const MenuManager = ({ onClose }) => {
         duration: 0.5,
         ease: "power4.out",
       },
-      0.05
+      0.05,
     );
   }, []);
 
@@ -111,7 +111,7 @@ const MenuManager = ({ onClose }) => {
   const toggleItem = async (id, currentStatus) => {
     const newStatus = !currentStatus;
     setItems((prev) =>
-      prev.map((i) => (i._id === id ? { ...i, isAvailable: newStatus } : i))
+      prev.map((i) => (i._id === id ? { ...i, isAvailable: newStatus } : i)),
     );
     try {
       await axios.put(`${API_URL}/menu/${id}/availability`, {
@@ -192,7 +192,7 @@ const MenuManager = ({ onClose }) => {
       {
         duration: Infinity,
         position: "top-center",
-      }
+      },
     );
   };
 
