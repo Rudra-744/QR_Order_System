@@ -8,6 +8,6 @@ export default defineConfig({
     tailwindcss(),
   ],
   server: {
-    allowedHosts: ['drops-employers-sam-wondering.trycloudflare.com']
+    allowedHosts: ['solved-preserve-interracial-subdivision.trycloudflare.com']
   }
 })

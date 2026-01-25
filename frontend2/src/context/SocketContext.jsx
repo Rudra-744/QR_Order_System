@@ -8,14 +8,12 @@ export const useSocket = () => {
 };
 
 export const SocketProvider = ({ children }) => {
-  // 🔥 FIX: 'withCredentials' hata diya hai.
-  // Backend pe origin: "*" hai, isliye ye hataana zaroori hai.
   const socket = useMemo(
     () =>
-      io("https://barry-corporations-salem-pike.trycloudflare.com", {
+      io("http://localhost:5000", {
         transports: ["websocket"],
       }),
-    []
+    [],
   );
 
   return (

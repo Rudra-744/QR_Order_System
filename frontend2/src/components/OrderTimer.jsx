@@ -5,33 +5,38 @@ const OrderTimer = ({ startTime }) => {
   const [elapsed, setElapsed] = useState(0);
 
   useEffect(() => {
-    // Har minute update karo
-    const interval = setInterval(() => {
+    const calculateElapsed = () => {
       const now = new Date();
       const start = new Date(startTime);
       const diffMins = Math.floor((now - start) / 60000);
       setElapsed(diffMins);
-    }, 60000); // 1 minute interval
+    };
 
-    // Initial calculation
-    const now = new Date();
-    const start = new Date(startTime);
-    setElapsed(Math.floor((now - start) / 60000));
+    calculateElapsed();
+
+    const interval = setInterval(calculateElapsed, 1000);
 
     return () => clearInterval(interval);
   }, [startTime]);
 
-  // Color Logic
   let colorClass = "text-green-600 bg-green-100";
-  if (elapsed > 10) colorClass = "text-yellow-700 bg-yellow-100";
-  if (elapsed > 20) colorClass = "text-red-700 bg-red-100 animate-pulse";
+  let label = "On Time";
+
+  if (elapsed >= 10 && elapsed < 15) {
+    colorClass = "text-amber-700 bg-amber-100";
+    label = "Warning";
+  } else if (elapsed >= 15) {
+    colorClass = "text-red-600 bg-red-100 animate-pulse";
+    label = "Late";
+  }
 
   return (
     <div
-      className={`flex items-center gap-1 px-2 py-1 rounded-md text-xs font-bold ${colorClass}`}
+      className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-bold ${colorClass}`}
     >
-      <FiClock />
-      <span>{elapsed} min ago</span>
+      <FiClock size={14} />
+      <span>{elapsed} min</span>
+      <span className="opacity-70">• {label}</span>
     </div>
   );
 };

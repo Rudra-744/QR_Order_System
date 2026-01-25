@@ -3,7 +3,8 @@ import axios from "axios";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate, Link } from "react-router-dom";
 import { FiUser, FiLock, FiArrowRight, FiCoffee } from "react-icons/fi";
-import toast from 'react-hot-toast';
+import toast from "react-hot-toast";
+
 const Login = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -15,7 +16,6 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
 
-    // 👇 Loading Toast (Optional but sexy)
     const toastId = toast.loading("Checking credentials...");
 
     try {
@@ -24,13 +24,11 @@ const Login = () => {
         password,
       });
 
-      // 👇 Success Toast
       toast.success(`Welcome back, ${res.data.username}! 👨‍🍳`, { id: toastId });
 
       login(res.data.token, res.data.username);
       navigate("/admin");
     } catch (err) {
-      // 👇 Error Toast
       toast.error("Incorrect Username or Password! ❌", { id: toastId });
     } finally {
       setLoading(false);
@@ -39,16 +37,13 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-orange-100 relative overflow-hidden">
-      {/* Background Blobs (Decoration) */}
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-brand-500/20 rounded-full blur-3xl animate-float"></div>
       <div
         className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-yellow-500/20 rounded-full blur-3xl animate-float"
         style={{ animationDelay: "1.5s" }}
       ></div>
 
-      {/* Main Glass Card */}
       <div className="glass-card p-8 md:p-10 rounded-3xl shadow-2xl w-full max-w-md relative z-10 animate-slide-up">
-        {/* Header */}
         <div className="text-center mb-8">
           <div className="bg-brand-500 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-brand-500/30">
             <FiCoffee className="text-white text-3xl" />
@@ -59,7 +54,6 @@ const Login = () => {
           <p className="text-gray-500 mt-2">Admin Dashboard Login</p>
         </div>
 
-        {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="group">
             <div className="relative">
@@ -100,7 +94,6 @@ const Login = () => {
           </button>
         </form>
 
-        {/* Footer */}
         <p className="text-center mt-8 text-sm text-gray-500">
           Don't have an account?
           <Link

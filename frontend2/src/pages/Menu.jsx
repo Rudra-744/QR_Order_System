@@ -12,7 +12,7 @@ import {
   FiRefreshCw,
 } from "react-icons/fi";
 
-const API_URL = "https://barry-corporations-salem-pike.trycloudflare.com/api";
+const API_URL = "http://localhost:5000/api";
 
 const Menu = () => {
   const [searchParams] = useSearchParams();
@@ -25,18 +25,15 @@ const Menu = () => {
   const [orderStatus, setOrderStatus] = useState(null);
   const [orderId, setOrderId] = useState(null);
 
-  // 👇 MAGIC FIX: Ref bana rahe hain taaki Socket hamesha latest ID padhe
   const orderIdRef = useRef(null);
 
   const [note, setNote] = useState("");
   const socket = useSocket();
 
-  // 1. Ref ko State ke saath sync rakho
   useEffect(() => {
     orderIdRef.current = orderId;
   }, [orderId]);
 
-  // 2. Menu Fetch Karo
   useEffect(() => {
     const fetchMenu = async () => {
       try {
@@ -49,7 +46,6 @@ const Menu = () => {
     fetchMenu();
   }, []);
 
-  // 3. SOCKET LISTENER & POLLING FALLBACK
   useEffect(() => {
     if (!socket || !tableNumber) return;
 
@@ -57,14 +53,10 @@ const Menu = () => {
       socket.emit("join_table", tableNumber);
     };
 
-    // Join immediately
     joinRoom();
-
-    // Re-join on connect (fixes refresh/network issues)
     socket.on("connect", joinRoom);
 
     const handleStatusUpdate = (updatedOrder) => {
-      // Check ID match
       if (
         orderIdRef.current &&
         String(updatedOrder._id) === String(orderIdRef.current)
@@ -85,21 +77,14 @@ const Menu = () => {
     };
   }, [socket, tableNumber]);
 
-  // 4. Manual Check Button (Remains as a backup for the user)
-  // Polling removed as per request. Relying on Socket.io.
-
-  // 5. Manual Check Button (Optimization)
   const checkStatusManually = async () => {
     if (!orderId) return;
     try {
       const res = await axios.get(`${API_URL}/orders/${orderId}`);
       setOrderStatus(res.data.status);
-    } catch (e) {
-      // Silent fail for manual check
-    }
+    } catch (e) {}
   };
 
-  // 5. Place Order Logic
   const addToCart = (item) => {
     setCart((prev) => ({
       ...prev,
@@ -125,14 +110,14 @@ const Menu = () => {
       const cartItems = Object.values(cart);
       const totalAmount = cartItems.reduce(
         (acc, item) => acc + item.price * item.qty,
-        0
+        0,
       );
 
       const payload = {
         tableNumber: parseInt(tableNumber),
         items: cartItems.map((i) => ({
           itemId: i._id,
-          name: i.name, // Name bhejna zaroori hai dashboard ke liye
+          name: i.name,
           price: i.price,
           qty: i.qty,
         })),
@@ -142,7 +127,6 @@ const Menu = () => {
 
       const res = await axios.post(`${API_URL}/orders`, payload);
 
-      // Update State AUR Ref dono set kar rahe hain
       setOrderId(res.data._id);
       orderIdRef.current = res.data._id;
       setOrderStatus("pending");
@@ -152,7 +136,6 @@ const Menu = () => {
     }
   };
 
-  // --- UI RENDER ---
   const categories = ["All", ...new Set(menu.map((i) => i.category))];
   const filteredMenu =
     activeCategory === "All"
@@ -166,12 +149,10 @@ const Menu = () => {
       </div>
     );
 
-  // STATUS SCREEN (Waiting / Accepted / Rejected)
   if (orderStatus) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-gray-50">
         <div className="bg-white p-8 rounded-2xl shadow-xl max-w-sm w-full relative">
-          {/* Refresh Button (Agar atak jaye toh) */}
           {orderStatus === "pending" && (
             <div
               className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 cursor-pointer"
@@ -182,7 +163,6 @@ const Menu = () => {
             </div>
           )}
 
-          {/* WAITING UI */}
           {orderStatus === "pending" && (
             <>
               <div className="bg-yellow-100 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 animate-pulse">
@@ -198,7 +178,6 @@ const Menu = () => {
             </>
           )}
 
-          {/* ACCEPTED UI */}
           {orderStatus === "approved" && (
             <>
               <div className="bg-green-100 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4 animate-bounce">
@@ -225,7 +204,6 @@ const Menu = () => {
             </>
           )}
 
-          {/* REJECTED UI */}
           {orderStatus === "rejected" && (
             <>
               <div className="bg-red-100 p-4 rounded-full w-20 h-20 flex items-center justify-center mx-auto mb-4">
@@ -253,19 +231,18 @@ const Menu = () => {
     );
   }
 
-  // MENU SCREEN
   return (
     <div className="min-h-screen pb-24 bg-gray-50">
-      <header className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 py-3 shadow-sm flex justify-between items-center">
+      <header className="sticky top-0 z-10 bg-white/95 backdrop-blur-sm border-b border-gray-100 px-4 shadow-sm flex justify-between items-center">
         <div className="flex items-center gap-3">
           <img
-            src="./public/logo.png"
+            src="/RIMI_logo-removebg-preview.png"
             alt="Logo"
-            className="w-10 h-10 rounded-lg"
+            className="w-25 h-25 rounded-lg"
           />
           <div>
             <h1 className="font-bold text-lg text-gray-800 leading-tight">
-              Mrs Jha <span className="text-brand-600">Kitchen</span>
+              RIMI
             </h1>
             <span className="text-xs text-gray-400">Menu</span>
           </div>
@@ -275,16 +252,15 @@ const Menu = () => {
         </div>
       </header>
 
-      {/* Categories */}
-      <div className="sticky top-[55px] z-10 bg-gray-50 py-3 overflow-x-auto no-scrollbar flex gap-3 px-4">
+      <div className="sticky top-[70px] z-10 bg-gray-50/95 backdrop-blur-sm py-3 overflow-x-auto no-scrollbar flex gap-2 px-4 snap-x snap-mandatory">
         {categories.map((cat) => (
           <button
             key={cat}
             onClick={() => setActiveCategory(cat)}
-            className={`whitespace-nowrap px-4 py-2 rounded-full text-sm font-bold transition-all shadow-sm ${
+            className={`whitespace-nowrap px-5 py-2.5 rounded-full text-sm font-bold transition-all snap-start ${
               activeCategory === cat
-                ? "bg-gray-900 text-white"
-                : "bg-white text-gray-700 border border-gray-200"
+                ? "bg-gradient-to-r from-gray-800 to-gray-900 text-white shadow-lg"
+                : "bg-white text-gray-600 border border-gray-200 shadow-sm active:scale-95"
             }`}
           >
             {cat}
@@ -292,48 +268,70 @@ const Menu = () => {
         ))}
       </div>
 
-      {/* Items */}
-      <div className="px-4 space-y-4 mt-2">
+      <div className="px-4 space-y-3 mt-3 pb-4">
         {filteredMenu.map((item) => {
           const qty = cart[item._id]?.qty || 0;
           return (
             <div
               key={item._id}
-              className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex justify-between items-start"
+              className="bg-white p-4 rounded-2xl shadow-md border border-gray-100 flex justify-between items-center gap-4 active:scale-[0.98] transition-transform"
             >
-              <div className="flex-1 pr-4">
-                <h3 className="font-bold text-gray-800">{item.name}</h3>
-                <p className="text-gray-900 font-bold">₹{item.price}</p>
-                <p className="text-xs text-gray-400 mt-1">{item.category}</p>
+              {item.imageUrl && (
+                <img
+                  src={item.imageUrl}
+                  alt={item.name}
+                  className="w-20 h-20 rounded-xl object-cover flex-shrink-0"
+                />
+              )}
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <h3 className="font-bold text-gray-800 text-base truncate">
+                    {item.name}
+                  </h3>
+                  {item.isBestseller && (
+                    <span className="bg-yellow-100 text-yellow-700 text-[10px] font-bold px-2 py-0.5 rounded-full">
+                      ⭐ BEST
+                    </span>
+                  )}
+                  {item.isVeg !== false && (
+                    <span className="w-4 h-4 border-2 border-green-600 rounded flex items-center justify-center shrink-0">
+                      <span className="w-2 h-2 bg-green-600 rounded-full"></span>
+                    </span>
+                  )}
+                </div>
+                <p className="text-lg font-bold text-gray-900">₹{item.price}</p>
+                <p className="text-xs text-gray-400 mt-0.5 line-clamp-1">
+                  {item.description || item.category}
+                </p>
               </div>
-              <div className="flex flex-col items-end">
+              <div className="flex-shrink-0">
                 {!item.isAvailable ? (
-                  <div className="text-red-500 text-xs font-bold bg-red-50 px-3 py-1.5 rounded-lg opacity-80">
+                  <div className="text-red-500 text-xs font-bold bg-red-50 px-4 py-2 rounded-xl">
                     SOLD OUT
                   </div>
                 ) : qty === 0 ? (
                   <button
                     onClick={() => addToCart(item)}
-                    className="bg-white text-green-600 border border-green-200 px-5 py-1.5 rounded-lg text-sm font-bold shadow-sm"
+                    className="bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-2.5 rounded-xl text-sm font-bold shadow-lg shadow-green-500/30 active:scale-95 transition-transform"
                   >
                     ADD
                   </button>
                 ) : (
-                  <div className="flex items-center bg-green-600 rounded-lg shadow-md">
+                  <div className="flex items-center bg-gradient-to-r from-green-500 to-green-600 rounded-xl shadow-lg shadow-green-500/30">
                     <button
                       onClick={() => removeFromCart(item._id)}
-                      className="p-2 text-white"
+                      className="p-3 text-white active:bg-green-700 rounded-l-xl transition-colors"
                     >
-                      <FiMinus size={14} />
+                      <FiMinus size={18} />
                     </button>
-                    <span className="text-white font-bold px-2 text-sm">
+                    <span className="text-white font-bold px-3 text-base min-w-[32px] text-center">
                       {qty}
                     </span>
                     <button
                       onClick={() => addToCart(item)}
-                      className="p-2 text-white"
+                      className="p-3 text-white active:bg-green-700 rounded-r-xl transition-colors"
                     >
-                      <FiPlus size={14} />
+                      <FiPlus size={18} />
                     </button>
                   </div>
                 )}
@@ -343,33 +341,31 @@ const Menu = () => {
         })}
       </div>
 
-      {/* Cart Footer */}
       {Object.values(cart).length > 0 && (
-        <div className="fixed bottom-4 left-4 right-4 z-20">
-          <div className="bg-white p-3 rounded-t-xl border-b border-gray-100 shadow-lg">
+        <div className="fixed bottom-0 left-0 right-0 z-20 p-4 bg-gradient-to-t from-gray-100 to-transparent pt-8">
+          <div className="bg-white p-3 rounded-t-2xl border border-gray-100 shadow-lg">
             <input
               type="text"
-              placeholder="Cooking Note? (e.g. Less Spicy)"
+              placeholder="Any special request? (e.g. Less spicy)"
               value={note}
               onChange={(e) => setNote(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none"
+              className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500"
             />
           </div>
           <div
-            className="bg-gray-900 text-white p-4 rounded-xl shadow-2xl flex justify-between items-center cursor-pointer"
+            className="bg-gradient-to-r from-gray-800 to-gray-900 text-white p-4 rounded-b-2xl shadow-2xl flex justify-between items-center cursor-pointer active:scale-[0.98] transition-transform"
             onClick={placeOrder}
           >
             <div className="flex flex-col">
-              <span className="text-xs text-gray-400 uppercase font-semibold">
-                {Object.values(cart).length} Items
+              <span className="text-xs text-gray-400 uppercase font-semibold tracking-wide">
+                {Object.values(cart).reduce((a, b) => a + b.qty, 0)} Items
               </span>
-              <span className="font-bold text-lg">
-                Total ₹
-                {Object.values(cart).reduce((a, b) => a + b.price * b.qty, 0)}
+              <span className="font-bold text-xl">
+                ₹{Object.values(cart).reduce((a, b) => a + b.price * b.qty, 0)}
               </span>
             </div>
-            <button className="flex items-center gap-2 bg-green-500 text-white px-5 py-2 rounded-lg font-bold text-sm">
-              Place Order <FiShoppingBag />
+            <button className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-green-600 text-white px-6 py-3 rounded-xl font-bold text-sm shadow-lg shadow-green-500/30 active:scale-95 transition-transform">
+              Place Order <FiShoppingBag size={18} />
             </button>
           </div>
         </div>
