@@ -5,6 +5,8 @@ import { FiUser, FiLock, FiArrowRight, FiShield } from "react-icons/fi";
 import { useAuth } from "../context/AuthContext";
 import { toast } from "react-hot-toast";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 const Signup = () => {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -18,7 +20,7 @@ const Signup = () => {
     const toastId = toast.loading("Creating your account...");
 
     try {
-      const res = await axios.post("http://localhost:5000/api/admin/register", {
+      const res = await axios.post(`${API_URL}/admin/register`, {
         username,
         password,
       });
