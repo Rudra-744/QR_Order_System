@@ -6,7 +6,8 @@ exports.getMenu = async (req, res) => {
     const menu = await MenuItem.find();
     res.json(menu);
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    console.error("Get Menu Error:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 
@@ -25,7 +26,10 @@ exports.addMenuItem = async (req, res) => {
     await newItem.save();
     res.status(201).json(newItem);
   } catch (error) {
-    res.status(500).json({ message: "Failed to add item" });
+    console.error("Add Menu Item Error:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to add item", error: error.message });
   }
 };
 
@@ -48,8 +52,8 @@ exports.updateAvailability = async (req, res) => {
 
     res.json(updatedItem);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Server Error" });
+    console.error("Update Availability Error:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 
@@ -68,8 +72,10 @@ exports.deleteMenuItem = async (req, res) => {
 
     res.json({ message: "Item deleted successfully", id: deletedItem._id });
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Failed to delete item" });
+    console.error("Delete Item Error:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to delete item", error: error.message });
   }
 };
 
@@ -94,7 +100,9 @@ exports.updateMenuItem = async (req, res) => {
 
     res.json(updatedItem);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Failed to update item" });
+    console.error("Update Item Error:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to update item", error: error.message });
   }
 };

@@ -32,7 +32,11 @@ exports.register = async (req, res) => {
 
     sendTokenResponse(newUser, 201, res);
   } catch (err) {
-    res.status(500).json({ message: "Error" });
+    console.error("Register Error:", err);
+    if (err.code === 11000) {
+      return res.status(400).json({ message: "Username already exists" });
+    }
+    res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
 
@@ -46,7 +50,8 @@ exports.login = async (req, res) => {
 
     sendTokenResponse(user, 200, res);
   } catch (err) {
-    res.status(500).json({ message: "Error" });
+    console.error("Login Error:", err);
+    res.status(500).json({ message: "Server Error", error: err.message });
   }
 };
 

@@ -13,7 +13,8 @@ exports.getOrders = async (req, res) => {
     const orders = await Order.find(query).sort({ createdAt: -1 });
     res.json(orders);
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    console.error("Get Orders Error:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 
@@ -35,8 +36,10 @@ exports.createOrder = async (req, res) => {
 
     res.status(201).json(newOrder);
   } catch (error) {
-    console.error(error);
-    res.status(500).json({ message: "Failed to create order" });
+    console.error("Create Order Error:", error);
+    res
+      .status(500)
+      .json({ message: "Failed to create order", error: error.message });
   }
 };
 
@@ -58,8 +61,8 @@ exports.updateOrderStatus = async (req, res) => {
 
     res.json(order);
   } catch (error) {
-    console.error("Update Error:", error);
-    res.status(500).json({ message: "Server Error" });
+    console.error("Update Order Status Error:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
 
@@ -71,6 +74,7 @@ exports.getOrderById = async (req, res) => {
     }
     res.json(order);
   } catch (error) {
-    res.status(500).json({ message: "Server Error" });
+    console.error("Get Order By Id Error:", error);
+    res.status(500).json({ message: "Server Error", error: error.message });
   }
 };
