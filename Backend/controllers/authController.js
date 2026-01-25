@@ -8,11 +8,13 @@ const SECRET_KEY =
 const sendTokenResponse = (user, statusCode, res) => {
   const token = jwt.sign({ id: user._id }, SECRET_KEY, { expiresIn: "1d" });
 
+  const isProduction = process.env.NODE_ENV === "production";
+
   const options = {
     expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
     httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "strict",
+    secure: isProduction,
+    sameSite: isProduction ? "none" : "strict",
   };
 
   res
