@@ -2,7 +2,8 @@ const User = require("../models/User");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
-const SECRET_KEY = "mrsjhakitchen_secret_key_change_this";
+const SECRET_KEY =
+  process.env.JWT_SECRET || "mrsjhakitchen_secret_key_change_this";
 
 const sendTokenResponse = (user, statusCode, res) => {
   const token = jwt.sign({ id: user._id }, SECRET_KEY, { expiresIn: "1d" });

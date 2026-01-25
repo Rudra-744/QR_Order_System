@@ -1,7 +1,8 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
-const SECRET_KEY = "mrsjhakitchen_secret_key_change_this";
+const SECRET_KEY =
+  process.env.JWT_SECRET || "mrsjhakitchen_secret_key_change_this";
 
 const protect = async (req, res, next) => {
   const token = req.cookies.token;
