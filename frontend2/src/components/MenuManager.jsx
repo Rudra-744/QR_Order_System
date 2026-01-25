@@ -40,6 +40,17 @@ const MenuManager = ({ onClose }) => {
   const panelRef = useRef(null);
   const backdropRef = useRef(null);
 
+  const fetchMenu = async () => {
+    setIsLoading(true);
+    try {
+      const res = await axios.get(`${API_URL}/menu`);
+      setItems(res.data);
+    } catch (error) {
+      console.error("Failed to fetch menu");
+    }
+    setIsLoading(false);
+  };
+
   const handleClose = () => {
     const tl = gsap.timeline({
       onComplete: onClose,
@@ -69,11 +80,9 @@ const MenuManager = ({ onClose }) => {
   useEffect(() => {
     fetchMenu();
 
-    // Set initial state immediately (no animation flicker)
     gsap.set(panelRef.current, { x: "100%" });
     gsap.set(backdropRef.current, { opacity: 0 });
 
-    // Entry animation with slight delay for smoother feel
     const tl = gsap.timeline();
 
     tl.to(
@@ -96,17 +105,6 @@ const MenuManager = ({ onClose }) => {
       0.05,
     );
   }, []);
-
-  const fetchMenu = async () => {
-    setIsLoading(true);
-    try {
-      const res = await axios.get(`${API_URL}/menu`);
-      setItems(res.data);
-    } catch (err) {
-      console.error("Failed to fetch menu");
-    }
-    setIsLoading(false);
-  };
 
   const toggleItem = async (id, currentStatus) => {
     const newStatus = !currentStatus;
