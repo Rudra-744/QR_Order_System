@@ -5,6 +5,7 @@ const mongoose = require("mongoose");
 const cors = require("cors");
 const socket = require("./socket");
 const connectDB = require("./config/db");
+const errorHandler = require("./utils/errorHandler");
 
 const app = express();
 const httpServer = createServer(app);
@@ -38,9 +39,15 @@ connectDB();
 
 socket.init(httpServer);
 
+const helmet = require("helmet");
+
+app.use(helmet());
 app.use("/api/menu", require("./routes/menuRoutes"));
 app.use("/api/orders", require("./routes/orderRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
+app.use("/api/tables", require("./routes/tableRoutes"));
+
+app.use(errorHandler);
 
 const PORT = process.env.PORT || 5000;
 httpServer.listen(PORT, () => {

@@ -28,7 +28,7 @@ const Login = () => {
 
       toast.success(`Welcome back, ${res.data.username}! 👨‍🍳`, { id: toastId });
 
-      login(res.data.token, res.data.username);
+      login(res.data.token, res.data.username, res.data.restaurantId);
       navigate("/admin");
     } catch (err) {
       toast.error("Incorrect Username or Password! ❌", { id: toastId });
@@ -38,7 +38,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 via-white to-orange-100 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[var(--color-cream)] via-white to-[var(--color-cream)] relative overflow-hidden">
       <div className="absolute top-[-10%] left-[-10%] w-96 h-96 bg-brand-500/20 rounded-full blur-3xl animate-float"></div>
       <div
         className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-yellow-500/20 rounded-full blur-3xl animate-float"

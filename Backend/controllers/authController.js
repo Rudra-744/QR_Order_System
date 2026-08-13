@@ -1,4 +1,5 @@
 const User = require("../models/User");
+const Restaurant = require("../models/Restaurant");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
 
@@ -20,14 +21,26 @@ const sendTokenResponse = (user, statusCode, res) => {
   res
     .status(statusCode)
     .cookie("token", token, options)
-    .json({ success: true, username: user.username });
+    .json({ success: true, token, username: user.username, restaurantId: user.restaurantId });
 };
 
 exports.register = async (req, res) => {
   try {
     const { username, password } = req.body;
+    
+    // Create new restaurant for this user
+    const newRestaurant = new Restaurant({
+        name: `${username}'s Restaurant`,
+        email: `${username}@example.com`
+    });
+    await newRestaurant.save();
+
     const hashedPassword = await bcrypt.hash(password, 10);
-    const newUser = new User({ username, password: hashedPassword });
+    const newUser = new User({ 
+        username, 
+        password: hashedPassword,
+        restaurantId: newRestaurant._id
+    });
     await newUser.save();
 
     sendTokenResponse(newUser, 201, res);
@@ -66,7 +79,7 @@ exports.logout = (req, res) => {
 exports.getMe = async (req, res) => {
   try {
     const user = await User.findById(req.user.id).select("-password");
-    res.status(200).json({ success: true, username: user.username });
+    res.status(200).json({ success: true, username: user.username, restaurantId: user.restaurantId });
   } catch (err) {
     res.status(401).json({ message: "Not authorized" });
   }

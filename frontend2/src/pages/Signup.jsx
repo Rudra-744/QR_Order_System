@@ -38,7 +38,7 @@ const Signup = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-tl from-orange-50 via-white to-orange-100 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-tl from-[var(--color-cream)] via-white to-[var(--color-cream)] relative overflow-hidden">
       <div className="absolute top-10 right-10 w-72 h-72 bg-yellow-400/10 rounded-full blur-3xl animate-float"></div>
       <div
         className="absolute bottom-10 left-10 w-72 h-72 bg-brand-500/10 rounded-full blur-3xl animate-float"

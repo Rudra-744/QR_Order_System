@@ -12,12 +12,20 @@ module.exports = {
     });
 
     io.on("connection", (socket) => {
-      socket.on("join_table", (tableNumber) => {
-        const roomName1 = `table_${tableNumber}`;
-        const roomName2 = tableNumber.toString();
+      // Restaurant owner joins their restaurant room
+      socket.on("join_restaurant", (restaurantId) => {
+        if (!restaurantId) return;
+        const roomName = `restaurant_${restaurantId}`;
+        socket.join(roomName);
+        console.log(`Socket joined room: ${roomName}`);
+      });
 
-        socket.join(roomName1);
-        socket.join(roomName2);
+      // Customer joins table specific room for a restaurant
+      socket.on("join_table_restaurant", ({ restaurantId, tableNumber }) => {
+        if (!restaurantId || !tableNumber) return;
+        const roomName = `restaurant_${restaurantId}_table_${tableNumber}`;
+        socket.join(roomName);
+        console.log(`Socket joined room: ${roomName}`);
       });
 
       socket.on("disconnect", () => {});

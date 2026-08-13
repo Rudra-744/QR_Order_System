@@ -13,9 +13,8 @@ exports.updateOrderStatus = async (req, res) => {
     }
 
     const io = socket.getIO();
-    io.to(`table_${order.tableNumber}`).emit("order:update", order);
-    io.to(order.tableNumber.toString()).emit("order:update", order);
-    io.to("admin").emit("order:update", order);
+    io.to(`restaurant_${order.restaurantId}_table_${order.tableNumber}`).emit("order:update", order);
+    io.to(`restaurant_${order.restaurantId}`).emit("order:update", order);
 
     res.json(order);
   } catch (error) {

@@ -31,6 +31,7 @@ function App() {
         />
 
         <Routes>
+          <Route path="/menu" element={<Menu />} />
           <Route path="/" element={<Menu />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />

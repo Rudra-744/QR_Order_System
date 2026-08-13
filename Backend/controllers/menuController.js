@@ -3,7 +3,12 @@ const socket = require("../socket");
 
 exports.getMenu = async (req, res) => {
   try {
-    const menu = await MenuItem.find();
+    const { restaurantId } = req.query;
+    // req.user is set if accessed via protected admin route, otherwise it's a customer query
+    const queryId = req.user ? req.user.restaurantId : restaurantId;
+    if (!queryId) return res.status(400).json({ message: "Restaurant ID required" });
+
+    const menu = await MenuItem.find({ restaurantId: queryId });
     res.json(menu);
   } catch (error) {
     console.error("Get Menu Error:", error);
@@ -16,6 +21,7 @@ exports.addMenuItem = async (req, res) => {
     const { name, price, category, imageUrl, description, isBestseller } =
       req.body;
     const newItem = new MenuItem({
+      restaurantId: req.user.restaurantId,
       name,
       price,
       category,
@@ -38,8 +44,8 @@ exports.updateAvailability = async (req, res) => {
     const { id } = req.params;
     const { isAvailable } = req.body;
 
-    const updatedItem = await MenuItem.findByIdAndUpdate(
-      id,
+    const updatedItem = await MenuItem.findOneAndUpdate(
+      { _id: id, restaurantId: req.user.restaurantId },
       { isAvailable },
       { new: true },
     );
@@ -61,7 +67,7 @@ exports.deleteMenuItem = async (req, res) => {
   try {
     const { id } = req.params;
 
-    const deletedItem = await MenuItem.findByIdAndDelete(id);
+    const deletedItem = await MenuItem.findOneAndDelete({ _id: id, restaurantId: req.user.restaurantId });
 
     if (!deletedItem) {
       return res.status(404).json({ message: "Item not found" });
@@ -85,8 +91,8 @@ exports.updateMenuItem = async (req, res) => {
     const { name, price, category, imageUrl, description, isBestseller } =
       req.body;
 
-    const updatedItem = await MenuItem.findByIdAndUpdate(
-      id,
+    const updatedItem = await MenuItem.findOneAndUpdate(
+      { _id: id, restaurantId: req.user.restaurantId },
       { name, price, category, imageUrl, description, isBestseller },
       { new: true },
     );
