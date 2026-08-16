@@ -1,243 +1,218 @@
-# 🍽️ QR Based Order System
+# 🍽️ Rimi — Production-Grade QR Restaurant Ordering System
 
-A modern restaurant ordering system where customers can scan QR codes at their table to browse the menu and place orders directly. Orders appear in real-time on the admin dashboard using WebSocket technology.
+[![React](https://img.shields.io/badge/React-19.0-61DAFB?style=for-the-badge&logo=react&logoColor=white)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-7.3-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vitejs.dev/)
+[![Node.js](https://img.shields.io/badge/Node.js-Express%205-339933?style=for-the-badge&logo=node.js&logoColor=white)](https://nodejs.org/)
+[![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose%209-47A248?style=for-the-badge&logo=mongodb&logoColor=white)](https://www.mongodb.com/)
+[![Socket.IO](https://img.shields.io/badge/Socket.io-Admin%20Acceleration-010101?style=for-the-badge&logo=socket.io&logoColor=white)](https://socket.io/)
+[![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-v4-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![Jest](https://img.shields.io/badge/Jest-Automated%20Tests-C21325?style=for-the-badge&logo=jest&logoColor=white)](https://jestjs.io/)
 
-![React](https://img.shields.io/badge/React-19.2-61DAFB?logo=react&logoColor=white)
-![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=node.js&logoColor=white)
-![MongoDB](https://img.shields.io/badge/MongoDB-Mongoose-47A248?logo=mongodb&logoColor=white)
-![Socket.io](https://img.shields.io/badge/Socket.io-4.8-010101?logo=socket.io&logoColor=white)
+A modern, high-performance, and secure contactless dining experience. Customers scan table-specific QR codes to instantly browse dynamic menus and place orders without waiting for staff. Admin restaurant staff receive real-time audio-visual notifications on their dashboard.
 
 ---
 
-## ✨ Features
+## 🌟 Key Architecture & Highlights
 
-### Customer Side
-- 📱 Scan QR code to open menu (table auto-detected)
-- 🍕 Browse menu items with categories
-- 🛒 Add items to cart and place orders
-- ⏱️ Real-time order status updates
+- ⚡ **Zero-Latency Customer Experience**: Fast React 19 + Vite frontend with TanStack React Query caching and smart polling (replaces noisy client WebSockets to preserve customer privacy).
+- 🛡️ **Server-Authoritative Pricing & Integrity**: Client order requests only transmit `itemId` and `qty`. Item prices, names, and availability are enforced strictly by the backend database to prevent payload spoofing.
+- 🔁 **Idempotent Order Creation**: Powered by UUIDv4 idempotency keys to prevent duplicate transactions during network instability or accidental multi-clicks.
+- 🔔 **Admin Real-Time Acceleration**: Isolated, authenticated Socket.IO rooms for restaurant staff with lazy module loading (`AdminWrapper`) so customer bundles stay ultra-lightweight.
+- 📱 **Fluid Multi-Screen Responsiveness**: High-converting, animated mobile-first menu that seamlessly adapts into 2, 3, 4, or 5-column grid layouts for iPads and desktop displays.
+- 🧪 **Automated Testing Suite**: End-to-end integration tests using **Jest**, **Supertest**, and **mongodb-memory-server**.
 
-### Admin Dashboard
-- 📋 Real-time order notifications via WebSocket
-- ✅ Accept/Reject/Complete orders
-- 🍔 Menu management (Add, Edit, Delete items)
-- 🔐 Secure admin authentication with JWT
+---
+
+## 🚀 System Architecture
+
+```
+[ Customer Phone ] ─── (QR Scan) ───► [ React / Vite Menu ]
+                                            │
+                                 (REST + Idempotency)
+                                            │
+                                            ▼
+                                   [ Express 5 Backend ]
+                                  /          │          \
+                     (Joi Validate)   (Server Auth)   (Mongo DB)
+                                  \          │          /
+                                            ▼
+                               [ Real-Time Socket Event ]
+                                            │
+                                            ▼
+                                  [ Admin Dashboard ]
+```
 
 ---
 
 ## 🛠️ Tech Stack
 
-### Frontend
-| Technology | Purpose |
-|------------|---------|
-| React 19 | UI Framework |
-| Vite | Build Tool & Dev Server |
-| Tailwind CSS 4 | Styling |
-| React Router 7 | Navigation |
-| Socket.io Client | Real-time updates |
-| Axios | HTTP Requests |
-| GSAP | Animations |
-| React Hot Toast | Notifications |
+### Frontend (`frontend2`)
+- **Framework**: React 19 + Vite
+- **Data Fetching & State**: TanStack React Query + Custom Hooks
+- **Styling**: Tailwind CSS v4 + Vanilla CSS Design Tokens
+- **Animations**: Framer Motion
+- **Icons & Typography**: React Icons, Custom Rink typography
+- **Bundling Optimization**: Code-splitting with lazy Admin Socket isolation
 
-### Backend
-| Technology | Purpose |
-|------------|---------|
-| Node.js + Express 5 | Server Framework |
-| MongoDB + Mongoose 9 | Database |
-| Socket.io | Real-time Communication |
-| JWT | Authentication |
-| Bcrypt.js | Password Hashing |
-| Helmet | Security Headers |
-| CORS | Cross-Origin Requests |
+### Backend (`Backend`)
+- **Runtime**: Node.js (v18+) & Express 5
+- **Database**: MongoDB with Mongoose ODM
+- **Real-Time Engine**: Socket.IO (Admin dashboard channel)
+- **Security**: JWT Authentication, Helmet, Rate Limiting, HTTP Compression
+- **Validation**: Joi Schema Validation
+- **Testing**: Jest + Supertest + `mongodb-memory-server`
 
 ---
 
-## 📁 Project Structure
+## 📁 Repository Structure
 
 ```
-QR based order system/
+QR_Order_System/
 ├── Backend/
-│   ├── config/
-│   │   └── db.js              # MongoDB connection
-│   ├── controllers/
-│   │   ├── adminController.js # Admin login/signup
-│   │   ├── authController.js  # Authentication logic
-│   │   ├── menuController.js  # Menu CRUD operations
-│   │   └── orderController.js # Order management
-│   ├── middleware/
-│   │   └── authMiddleware.js  # JWT verification
-│   ├── models/
-│   │   ├── Admin.js           # Admin schema
-│   │   ├── MenuItem.js        # Menu item schema
-│   │   ├── Order.js           # Order schema
-│   │   ├── Table.js           # Table schema
-│   │   └── User.js            # User schema
-│   ├── routes/
-│   │   ├── adminRoutes.js     # Admin API routes
-│   │   ├── menuRoutes.js      # Menu API routes
-│   │   └── orderRoutes.js     # Order API routes
-│   ├── server.js              # Express app entry
-│   ├── socket.js              # Socket.io setup
-│   └── Seed.js                # Database seeder
+│   ├── config/              # MongoDB & JWT configuration
+│   ├── controllers/         # Auth, Menu, Order, and Admin business logic
+│   ├── middleware/          # JWT auth, rate limiter, error handlers
+│   ├── models/              # Admin, MenuItem, Order, Table schemas
+│   ├── routes/              # Express API route declarations
+│   ├── tests/               # Jest integration test suites
+│   ├── validations/         # Joi schema validations
+│   ├── Seed.js              # Initial database seeder
+│   ├── server.js            # Express & HTTP server entry point
+│   └── socket.js            # Socket.IO event setup
 │
 ├── frontend2/
 │   ├── src/
-│   │   ├── components/
-│   │   │   ├── MenuManager.jsx    # Admin menu management
-│   │   │   ├── OrderTimer.jsx     # Order countdown timer
-│   │   │   └── ProtectedRoute.jsx # Auth route guard
-│   │   ├── context/
-│   │   │   ├── AuthContext.jsx    # Authentication state
-│   │   │   └── SocketContext.jsx  # Socket.io provider
-│   │   ├── pages/
-│   │   │   ├── Dashboard.jsx      # Admin dashboard
-│   │   │   ├── Login.jsx          # Admin login
-│   │   │   ├── Menu.jsx           # Customer menu page
-│   │   │   └── Signup.jsx         # Admin signup
-│   │   ├── App.jsx
-│   │   └── main.jsx
-│   └── public/
-│       └── Logo.png
+│   │   ├── api/             # Axios client and React Query hooks
+│   │   ├── components/      # Admin dashboard and UI components
+│   │   │   ├── customer/    # MenuHeader, CategoryNav, MenuItemCard, Cart
+│   │   │   └── ui/          # Error boundaries, Skeleton loaders
+│   │   ├── hooks/           # useCart, useActiveOrders custom hooks
+│   │   ├── pages/           # Customer Menu, Admin Dashboard, Login, Signup
+│   │   ├── App.jsx          # Route declarations
+│   │   └── main.jsx         # App mounting point
+│   └── public/              # Brand logos and font assets
 │
-└── QR-Code/                   # QR code images for tables
-    ├── Table-1.png
-    ├── Table-2.png
-    └── Table-3.png
+└── QR-Code/                 # Pre-generated table QR code assets
 ```
 
 ---
 
-## 🚀 Getting Started
+## 💻 Getting Started Locally
 
 ### Prerequisites
-- Node.js (v18+)
-- MongoDB (local or Atlas)
-- npm or yarn
+- **Node.js** (v18.x or higher)
+- **MongoDB** (Local instance or free MongoDB Atlas URI)
+- **Git**
 
-### 1. Clone the Repository
+---
+
+### 1. Clone the Project
+
 ```bash
 git clone https://github.com/Rudra-744/QR_Order_System.git
 cd QR_Order_System
 ```
 
-### 2. Setup Backend
+---
+
+### 2. Backend Setup
 
 ```bash
 cd Backend
 npm install
 ```
 
-Create a `.env` file in the `Backend` folder:
+Create a `.env` file in the `Backend` directory:
 ```env
 PORT=5000
-MONGO_URI=your_mongodb_connection_string
-JWT_SECRET=your_jwt_secret_here
+MONGO_URI=mongodb://127.0.0.1:27017/qr_orders
+JWT_SECRET=your_super_secret_production_key_here
+NODE_ENV=development
 ```
 
-> ⚠️ **Note**: Replace `your_mongodb_connection_string` with your actual MongoDB URI and generate a strong random string for `JWT_SECRET`.
-
-Seed the database with sample menu items:
+Seed initial restaurant & menu data:
 ```bash
 node Seed.js
 ```
 
-Start the backend server:
+Start the backend development server:
 ```bash
 npm run dev
 ```
-Server will run on `http://localhost:5000`
+> Server will be running at `http://localhost:5000`
 
-### 3. Setup Frontend
+---
 
+### 3. Frontend Setup
+
+Open a new terminal window:
 ```bash
 cd frontend2
 npm install
+```
+
+Create a `.env` file in the `frontend2` directory:
+```env
+VITE_API_URL=http://localhost:5000/api
+VITE_SOCKET_URL=http://localhost:5000
+```
+
+Start the frontend development server:
+```bash
 npm run dev
 ```
-Frontend will run on `http://localhost:5173`
+> Customer Menu will be available at `http://localhost:5173/?restaurantId=<YOUR_ID>&tableNumber=1`  
+> Admin Dashboard will be available at `http://localhost:5173/admin`
 
 ---
 
-## 📱 How to Use
+### 4. Running Automated Tests
 
-### For Customers
-1. Scan the QR code at your table (e.g., `Table-1.png`)
-2. The menu page opens with your table number auto-detected
-3. Browse menu items and add to cart
-4. Place your order
-5. Wait for real-time status updates
-
-### For Admin
-1. Go to `/login` or `/signup` to create admin account
-2. Access the dashboard at `/admin`
-3. View incoming orders in real-time
-4. Accept, reject, or mark orders as complete
-5. Manage menu items (add/edit/delete)
+Run the complete backend integration test suite:
+```bash
+cd Backend
+npm test
+```
 
 ---
 
-## 🔗 API Endpoints
+## 🔒 Production API Reference
 
-### Menu
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/menu` | Get all menu items |
-| POST | `/api/menu` | Add new menu item |
-| PUT | `/api/menu/:id` | Update menu item |
-| DELETE | `/api/menu/:id` | Delete menu item |
+### 📋 Customer & Order API
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `GET` | `/api/menu?restaurantId=...` | Retrieve menu items for a restaurant | No |
+| `POST` | `/api/orders` | Place a server-authoritative order | No (Idempotency Key supported) |
+| `GET` | `/api/orders/:id` | Poll order status updates | No |
 
-### Orders
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/orders` | Get all orders |
-| POST | `/api/orders` | Create new order |
-| PUT | `/api/orders/:id/status` | Update order status |
-
-### Admin
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| POST | `/api/admin/signup` | Register admin |
-| POST | `/api/admin/login` | Admin login |
+### 👨‍🍳 Admin API
+| Method | Endpoint | Description | Auth Required |
+|---|---|---|---|
+| `POST` | `/api/admin/signup` | Register restaurant admin account | No |
+| `POST` | `/api/admin/login` | Authenticate admin & receive JWT | No |
+| `GET` | `/api/admin/orders` | Fetch active restaurant orders | Yes (Bearer JWT) |
+| `PATCH` | `/api/orders/:id/status` | Update status (`approved`, `rejected`, `completed`) | Yes (Bearer JWT) |
+| `POST` | `/api/menu` | Add new menu item | Yes (Bearer JWT) |
+| `PUT` | `/api/menu/:id` | Update existing menu item | Yes (Bearer JWT) |
+| `DELETE`| `/api/menu/:id` | Delete menu item | Yes (Bearer JWT) |
 
 ---
 
-## 🔌 WebSocket Events
+## 🌐 Production Deployment Guide
 
-| Event | Direction | Description |
-|-------|-----------|-------------|
-| `newOrder` | Server → Client | New order placed |
-| `orderStatusUpdate` | Server → Client | Order status changed |
-
----
-
-## 📸 Screenshots
-
-> Add screenshots of your application here
-
----
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
----
-
-## 📄 License
-
-This project is licensed under the ISC License.
+| Layer | Recommended Host | Notes |
+|---|---|---|
+| **Frontend** | **Vercel** or **Netlify** | Fast global edge CDN deployment. Connect directly to `/frontend2`. |
+| **Backend** | **Railway.app** or **Render** (Paid) | Persistent server required for Socket.IO WebSockets (No serverless sleep). |
+| **Database** | **MongoDB Atlas** | Free M0 sandbox or serverless tier. |
 
 ---
 
 ## 👨‍💻 Author
 
-**Rudra**
-
+**Rudra**  
 - GitHub: [@Rudra-744](https://github.com/Rudra-744)
 
 ---
 
-⭐ Star this repo if you found it helpful!
+⭐ *Star this repository if you find it helpful for your restaurant tech stack!*
