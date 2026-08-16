@@ -8,7 +8,8 @@ exports.getMenu = async (req, res) => {
     const queryId = req.user ? req.user.restaurantId : restaurantId;
     if (!queryId) return res.status(400).json({ message: "Restaurant ID required" });
 
-    const menu = await MenuItem.find({ restaurantId: queryId });
+    const menu = await MenuItem.find({ restaurantId: queryId })
+      .select('name price category isAvailable imageUrl description isBestseller');
     res.json(menu);
   } catch (error) {
     console.error("Get Menu Error:", error);

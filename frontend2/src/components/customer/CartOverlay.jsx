@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FiX, FiMinus, FiPlus, FiTrash2 } from 'react-icons/fi';
 
-const CartOverlay = ({ isOpen, onClose, cart, removeFromCart, addToCart, placeOrder, note, setNote }) => {
+const CartOverlay = ({ isOpen, onClose, cart, removeFromCart, addToCart, placeOrder, note, setNote, isPlacingOrder }) => {
   const cartItems = Object.values(cart);
   const totalAmount = cartItems.reduce((acc, item) => acc + item.price * item.qty, 0);
 
@@ -30,7 +30,7 @@ const CartOverlay = ({ isOpen, onClose, cart, removeFromCart, addToCart, placeOr
             {/* Header */}
             <div className="flex justify-between items-center p-6 border-b border-gray-200">
               <h2 className="font-japanese text-3xl font-bold text-[var(--color-navy)]">Your Order</h2>
-              <button onClick={onClose} className="p-2 text-gray-500 hover:text-gray-800 bg-white rounded-full shadow-sm">
+              <button onClick={onClose} className="p-3 text-gray-500 hover:text-gray-800 bg-white rounded-full shadow-sm">
                 <FiX size={24} />
               </button>
             </div>
@@ -46,7 +46,7 @@ const CartOverlay = ({ isOpen, onClose, cart, removeFromCart, addToCart, placeOr
                 </div>
               ) : (
                 cartItems.map((item) => (
-                  <div key={item._id} className="flex gap-4 items-center bg-white p-4 rounded-2xl shadow-sm border border-gray-100">
+                  <div key={item._id} className={`flex gap-4 items-center bg-white p-4 rounded-2xl shadow-sm border ${item.priceChanged ? 'border-amber-400 bg-amber-50/30' : 'border-gray-100'}`}>
                     <div className="w-20 h-20 bg-gray-100 rounded-full flex-shrink-0 flex items-center justify-center overflow-hidden border border-gray-200">
                       <img 
                         src={item.imageUrl || "https://images.unsplash.com/photo-1546069901-ba9599a7e63c?q=80&w=800&auto=format&fit=crop"} 
@@ -56,16 +56,23 @@ const CartOverlay = ({ isOpen, onClose, cart, removeFromCart, addToCart, placeOr
                     </div>
                     <div className="flex-1">
                       <h3 className="font-bold text-[var(--color-navy)] text-lg leading-tight mb-1">{item.name}</h3>
-                      <p className="text-[var(--color-accent)] font-semibold">₹{item.price * item.qty}</p>
+                      <div className="flex flex-col">
+                        <p className="text-[var(--color-accent)] font-semibold">₹{item.price * item.qty}</p>
+                        {item.priceChanged && (
+                          <span className="text-amber-600 text-xs font-bold mt-1 bg-amber-100 px-2 py-0.5 rounded w-max">
+                            ⚠️ Price updated from ₹{item.oldPrice}
+                          </span>
+                        )}
+                      </div>
                     </div>
                     
-                    <div className="flex flex-col items-center justify-between h-20 bg-gray-50 rounded-full w-10 py-1">
-                      <button onClick={() => addToCart(item)} className="text-[var(--color-navy)] p-1 active:scale-90">
-                        <FiPlus size={16} />
-                      </button>
-                      <span className="font-bold text-sm">{item.qty}</span>
-                      <button onClick={() => removeFromCart(item._id)} className="text-[var(--color-navy)] p-1 active:scale-90">
+                    <div className="flex items-center justify-between h-11 bg-gray-50 rounded-full min-w-[100px] px-1 border border-gray-100 shadow-inner">
+                      <button onClick={() => removeFromCart(item._id)} className="text-[var(--color-navy)] p-3 active:scale-90 flex items-center justify-center">
                         <FiMinus size={16} />
+                      </button>
+                      <span className="font-bold text-sm w-4 text-center">{item.qty}</span>
+                      <button onClick={() => addToCart(item)} className="text-[var(--color-navy)] p-3 active:scale-90 flex items-center justify-center">
+                        <FiPlus size={16} />
                       </button>
                     </div>
                   </div>
@@ -91,9 +98,15 @@ const CartOverlay = ({ isOpen, onClose, cart, removeFromCart, addToCart, placeOr
                 </div>
                 <button
                   onClick={placeOrder}
-                  className="w-full bg-[var(--color-navy)] text-white font-japanese text-2xl font-bold py-4 rounded-full shadow-lg active:scale-95 transition-transform"
+                  disabled={isPlacingOrder}
+                  className={`w-full text-white font-japanese text-2xl font-bold py-4 rounded-full shadow-lg transition-transform ${isPlacingOrder ? 'bg-gray-400 cursor-not-allowed' : 'bg-[var(--color-navy)] active:scale-95'}`}
                 >
-                  Place Order
+                  {isPlacingOrder ? (
+                    <span className="flex items-center justify-center gap-3">
+                      <div className="w-6 h-6 border-4 border-white border-t-transparent rounded-full animate-spin"></div>
+                      Placing Order...
+                    </span>
+                  ) : 'Place Order'}
                 </button>
               </div>
             )}

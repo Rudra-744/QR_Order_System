@@ -7,6 +7,14 @@ mongoose
   .then(async () => {
     console.log("🌱 Seeding Menu...");
 
+    const db = mongoose.connection.db;
+    const users = await db.collection("users").find({}).toArray();
+    if (users.length === 0) {
+      console.log("❌ No user found. Please signup first!");
+      process.exit(1);
+    }
+    const restaurantId = users[0].restaurantId;
+
     await MenuItem.deleteMany({});
 
     const items = [
@@ -266,8 +274,13 @@ mongoose
       },
     ];
 
-    await MenuItem.insertMany(items);
-    console.log("✅ Menu Loaded Successfully! Total items:", items.length);
+    const itemsWithRestaurant = items.map(item => ({
+      ...item,
+      restaurantId: restaurantId
+    }));
+
+    await MenuItem.insertMany(itemsWithRestaurant);
+    console.log("✅ Menu Loaded Successfully! Total items:", itemsWithRestaurant.length);
     process.exit();
   })
   .catch((err) => {

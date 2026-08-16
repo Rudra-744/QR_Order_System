@@ -2,12 +2,10 @@ const User = require("../models/User");
 const Restaurant = require("../models/Restaurant");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcryptjs");
-
-const SECRET_KEY =
-  process.env.JWT_SECRET || "mrsjhakitchen_secret_key_change_this";
+const { JWT_SECRET } = require("../config/jwt");
 
 const sendTokenResponse = (user, statusCode, res) => {
-  const token = jwt.sign({ id: user._id }, SECRET_KEY, { expiresIn: "1d" });
+  const token = jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: "1d" });
 
   const isProduction = process.env.NODE_ENV === "production";
 

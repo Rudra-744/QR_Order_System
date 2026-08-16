@@ -1,4 +1,4 @@
-import React, { createContext, useMemo, useContext } from "react";
+import React, { createContext, useContext, useEffect, useRef, useState } from "react";
 import { io } from "socket.io-client";
 
 const SocketContext = createContext(null);
@@ -10,13 +10,27 @@ export const useSocket = () => {
 };
 
 export const SocketProvider = ({ children }) => {
-  const socket = useMemo(
-    () =>
-      io(SOCKET_URL, {
-        transports: ["websocket"],
-      }),
-    [],
-  );
+  const socketRef = useRef(null);
+  const [socket, setSocket] = useState(null);
+
+  useEffect(() => {
+    // Read the JWT token that AuthContext stores in localStorage
+    const token = localStorage.getItem("token");
+
+    const newSocket = io(SOCKET_URL, {
+      transports: ["websocket"],
+      // Pass JWT in the handshake auth payload so the server can
+      // authenticate the socket for join_restaurant (Fix 1)
+      auth: { token: token || "" },
+    });
+
+    socketRef.current = newSocket;
+    setSocket(newSocket);
+
+    return () => {
+      newSocket.disconnect();
+    };
+  }, []);
 
   return (
     <SocketContext.Provider value={socket}>{children}</SocketContext.Provider>

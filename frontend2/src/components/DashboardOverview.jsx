@@ -1,433 +1,527 @@
 import React, { useEffect, useRef } from "react";
 import { motion } from "framer-motion";
-import gsap from "gsap";
+import { useTables } from "../api/queries";
 import {
   FiShoppingBag,
   FiTrendingUp,
   FiUsers,
-  FiDollarSign,
-  FiArrowUp,
-  FiArrowDown,
-  FiCoffee,
   FiClock,
+  FiBell,
+  FiSettings,
+  FiCheckCircle,
+  FiArrowUpRight,
+  FiCalendar,
 } from "react-icons/fi";
 
-const container = {
-  hidden: { opacity: 0 },
-  show: {
-    opacity: 1,
-    transition: { staggerChildren: 0.08 },
-  },
+// ─── FOOD IMAGES for activity cards (placeholder food photos) ─────────────────
+const FOOD_IMGS = [
+  "https://images.unsplash.com/photo-1565299624946-b28f40a0ae38?w=80&h=80&fit=crop",
+  "https://images.unsplash.com/photo-1567620905732-2d1ec7ab7445?w=80&h=80&fit=crop",
+  "https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=80&h=80&fit=crop",
+  "https://images.unsplash.com/photo-1540189549336-e6e99c3679fe?w=80&h=80&fit=crop",
+];
+
+// ─── STATUS BADGE ─────────────────────────────────────────────────────────────
+const StatusBadge = ({ status }) => {
+  const map = {
+    completed: { bg: "#d1fae5", color: "#065f46", label: "Completed" },
+    pending:   { bg: "#fff7ed", color: "#c2410c", label: "Pending" },
+    approved:  { bg: "#eff6ff", color: "#1d4ed8", label: "Approved" },
+    preparing: { bg: "#fef3c7", color: "#b45309", label: "Preparing" },
+    ready:     { bg: "#ecfdf5", color: "#047857", label: "Ready" },
+    cancelled: { bg: "#fef2f2", color: "#b91c1c", label: "Cancelled" },
+  };
+  const s = map[status] || { bg: "#f3f4f6", color: "#374151", label: status };
+  return (
+    <span style={{
+      background: s.bg, color: s.color,
+      padding: "4px 10px", borderRadius: 999,
+      fontSize: 12, fontWeight: 800, whiteSpace: "nowrap",
+    }}>
+      {s.label}
+    </span>
+  );
 };
 
-const fadeUp = {
-  hidden: { opacity: 0, y: 30 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: "easeOut" } },
-};
+// ─── STRIPED PROGRESS BAR (exact D.CC style) ─────────────────────────────────
+const StripedBar = ({ pct, color }) => (
+  <div style={{ width: "100%", height: 10, background: "#f0f0f0", borderRadius: 6, overflow: "hidden" }}>
+    <motion.div
+      initial={{ width: 0 }}
+      animate={{ width: `${pct}%` }}
+      transition={{ duration: 1.2, ease: "easeOut" }}
+      style={{
+        height: "100%",
+        borderRadius: 6,
+        background: color,
+        backgroundImage:
+          "repeating-linear-gradient(45deg, rgba(255,255,255,0.25) 0px, rgba(255,255,255,0.25) 4px, transparent 4px, transparent 8px)",
+      }}
+    />
+  </div>
+);
 
+// ─── CARD WRAPPER ─────────────────────────────────────────────────────────────
+const Card = ({ children, style = {} }) => (
+  <div style={{
+    background: "#fff", borderRadius: 16,
+    boxShadow: "0 1px 4px rgba(0,0,0,0.06)",
+    padding: 24, ...style
+  }}>
+    {children}
+  </div>
+);
+
+// ─── SECTION LABEL ────────────────────────────────────────────────────────────
+const SectionLabel = ({ children }) => (
+  <span style={{ fontSize: 13, color: "#aaa", fontWeight: 700 }}>{children}</span>
+);
+
+// ─── MAIN COMPONENT ───────────────────────────────────────────────────────────
 const DashboardOverview = ({ orders = [] }) => {
-  const statsRef = useRef([]);
   const chartRef = useRef(null);
+  const { data: tables = [] } = useTables();
 
-  const todayOrders = orders.filter((o) => {
-    const today = new Date();
-    const orderDate = new Date(o.createdAt);
-    return orderDate.toDateString() === today.toDateString();
-  });
+  const today = new Date();
+  const todayOrders = orders.filter(
+    (o) => new Date(o.createdAt).toDateString() === today.toDateString()
+  );
 
   const todayRevenue = todayOrders
     .filter((o) => o.status === "completed")
-    .reduce((acc, o) => acc + o.totalAmount, 0);
+    .reduce((acc, o) => acc + (o.totalAmount || 0), 0);
 
-  const pendingCount = todayOrders.filter((o) => o.status === "pending").length;
-  const completedCount = todayOrders.filter(
-    (o) => o.status === "completed"
+  const pendingCount    = todayOrders.filter((o) => o.status === "pending").length;
+  const inProgressCount = todayOrders.filter((o) => ["approved","preparing","ready"].includes(o.status)).length;
+  const completedCount  = todayOrders.filter((o) => o.status === "completed").length;
+  const totalToday      = todayOrders.length || 1;
+
+  const availableTables = tables.filter(
+    (t) => t.status !== "occupied" && t.status !== "payment_pending"
   ).length;
 
-  const stats = [
-    {
-      label: "Today's Revenue",
-      value: `₹${todayRevenue.toLocaleString()}`,
-      icon: FiDollarSign,
-      change: "+12%",
-      positive: true,
-      iconColor: "text-emerald-500",
-      iconBg: "bg-emerald-50",
-    },
-    {
-      label: "Total Orders",
-      value: todayOrders.length,
-      icon: FiShoppingBag,
-      change: `${pendingCount} pending`,
-      positive: null,
-      iconColor: "text-[var(--color-cream)]",
-      iconBg: "bg-[var(--color-cream)]/10",
-    },
-    {
-      label: "Completed",
-      value: completedCount,
-      icon: FiTrendingUp,
-      change: `${todayOrders.length > 0 ? Math.round((completedCount / todayOrders.length) * 100) : 0}%`,
-      positive: true,
-      iconColor: "text-blue-500",
-      iconBg: "bg-blue-50",
-    },
-    {
-      label: "Avg Order Value",
-      value: `₹${completedCount > 0 ? Math.round(todayRevenue / completedCount) : 0}`,
-      icon: FiUsers,
-      change: "per order",
-      positive: null,
-      iconColor: "text-rose-500",
-      iconBg: "bg-rose-50",
-    },
-  ];
-
-  // Animate stat numbers on mount
-  useEffect(() => {
-    statsRef.current.forEach((el, i) => {
-      if (el) {
-        gsap.fromTo(
-          el,
-          { innerText: 0 },
-          {
-            duration: 1.2,
-            delay: i * 0.15,
-            ease: "power2.out",
-          }
-        );
-      }
-    });
-  }, []);
-
-  // Animate chart bars
-  useEffect(() => {
-    if (chartRef.current) {
-      const bars = chartRef.current.querySelectorAll(".chart-bar");
-      gsap.fromTo(
-        bars,
-        { scaleY: 0, transformOrigin: "bottom" },
-        {
-          scaleY: 1,
-          duration: 0.8,
-          stagger: 0.05,
-          ease: "elastic.out(1, 0.5)",
-          delay: 0.4,
-        }
-      );
-    }
-  }, []);
-
-  // Generate hourly order data for chart
-  const hourlyData = Array.from({ length: 12 }, (_, i) => {
-    const hour = i + 8; // 8 AM to 8 PM
-    const count = todayOrders.filter((o) => {
-      const h = new Date(o.createdAt).getHours();
-      return h === hour;
-    }).length;
-    return { hour: `${hour > 12 ? hour - 12 : hour}${hour >= 12 ? "PM" : "AM"}`, count };
+  // ── Hourly chart data ────────────────────────────────────────────────────────
+  const months = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const monthlyData = Array.from({ length: 9 }, (_, i) => {
+    const m = (today.getMonth() - 8 + i + 12) % 12;
+    const rev = orders
+      .filter((o) => new Date(o.createdAt).getMonth() === m && o.status === "completed")
+      .reduce((a, b) => a + (b.totalAmount || 0), 0);
+    return { label: months[m], rev, isCurrent: m === today.getMonth() };
   });
+  const maxRev = Math.max(...monthlyData.map((d) => d.rev), 500);
 
-  const maxCount = Math.max(...hourlyData.map((d) => d.count), 1);
-
-  // Recent orders (last 5)
-  const recentOrders = [...todayOrders]
+  // ── Recent activity ──────────────────────────────────────────────────────────
+  const recentActivity = [...todayOrders]
     .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    .slice(0, 5);
+    .slice(0, 4);
 
-  // Top selling items
+  // ── Top Dishes ───────────────────────────────────────────────────────────────
   const itemCounts = {};
-  todayOrders.forEach((o) => {
-    o.items.forEach((item) => {
-      const key = item.name || "Unknown";
-      itemCounts[key] = (itemCounts[key] || 0) + item.qty;
-    });
-  });
-  const topItems = Object.entries(itemCounts)
-    .sort(([, a], [, b]) => b - a)
-    .slice(0, 5);
+  orders.forEach((o) =>
+    o.items?.forEach((item) => {
+      const k = item.name || "Unknown";
+      itemCounts[k] = (itemCounts[k] || 0) + (item.qty || 1);
+    })
+  );
+  const topItems = Object.entries(itemCounts).sort(([,a],[,b]) => b-a).slice(0, 8);
+  const maxQty = topItems[0]?.[1] || 1;
 
   return (
-    <motion.div
-      variants={container}
-      initial="hidden"
-      animate="show"
-      className="space-y-8"
-    >
-      {/* Page Title */}
-      <motion.div variants={fadeUp} className="flex items-center justify-between">
-        <div>
-          <h1 className="font-japanese text-5xl font-bold text-[var(--color-navy)] tracking-wide">
-            Dashboard
-          </h1>
-          <p className="text-[var(--color-navy)]/60 mt-2 text-sm font-medium">
-            Welcome back! Here's what's happening today.
-          </p>
-        </div>
-        <div className="hidden sm:flex items-center gap-2 bg-[var(--color-navy)] px-4 py-2.5 rounded-xl shadow-md">
-          <FiClock size={16} className="text-[var(--color-accent)]" />
-          <span className="text-sm font-medium text-white/90">
-            {new Date().toLocaleDateString("en-US", {
-              weekday: "long",
-              month: "short",
-              day: "numeric",
-            })}
-          </span>
-        </div>
-      </motion.div>
+    <div style={{ display: "flex", gap: 20, height: "100%", paddingBottom: 24 }}>
+      {/* ── LEFT + CENTER (3 cols) ───────────────────────────────────────────── */}
+      <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column", gap: 20 }}>
 
-      {/* Stats Grid */}
-      <motion.div
-        variants={fadeUp}
-        className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5"
-      >
-        {stats.map((stat, i) => {
-          const Icon = stat.icon;
-          return (
-            <motion.div
-              key={stat.label}
-              whileHover={{ y: -2, transition: { duration: 0.2 } }}
-              className="bg-[var(--color-navy)] rounded-2xl p-5 shadow-lg border border-white/5"
-            >
-              <div className="flex items-center justify-between mb-3">
-                <div
-                  className={`w-10 h-10 ${stat.iconBg} rounded-xl flex items-center justify-center`}
-                >
-                  <Icon size={20} className={stat.iconColor} />
-                </div>
-                {stat.positive !== null && (
-                  <span
-                    className={`flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded-md ${
-                      stat.positive
-                        ? "bg-emerald-50 text-emerald-600"
-                        : "bg-red-50 text-red-500"
-                    }`}
-                  >
-                    {stat.positive ? (
-                      <FiArrowUp size={11} />
-                    ) : (
-                      <FiArrowDown size={11} />
-                    )}
-                    {stat.change}
-                  </span>
-                )}
-                {stat.positive === null && (
-                  <span className="text-[11px] font-medium text-white/60 px-2 py-0.5 bg-white/10 rounded-md">
-                    {stat.change}
-                  </span>
-                )}
-              </div>
-              <p
-                ref={(el) => (statsRef.current[i] = el)}
-                className="font-japanese text-4xl font-bold text-white tracking-wide"
-              >
-                {stat.value}
-              </p>
-              <p className="text-xs text-white/50 mt-2 font-medium uppercase tracking-wider">
-                {stat.label}
-              </p>
-            </motion.div>
-          );
-        })}
-      </motion.div>
-
-      {/* Charts + Trending Row */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Hourly Orders Chart */}
-        <motion.div
-          variants={fadeUp}
-          className="lg:col-span-2 bg-[var(--color-navy)] rounded-2xl p-6 shadow-lg border border-white/5"
-        >
-          <div className="flex items-center justify-between mb-6">
+        {/* TOP HEADER */}
+        <Card style={{ padding: "18px 24px" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 12 }}>
             <div>
-              <h3 className="font-japanese text-2xl font-bold text-white tracking-wide">
-                Order Activity
-              </h3>
-              <p className="text-white/50 text-sm mt-1">Hourly breakdown today</p>
+              <h1 style={{ fontWeight: 900, fontSize: 22, color: "#1a1a2e", margin: 0, lineHeight: 1.2 }}>Dashboard</h1>
+              <p style={{ fontSize: 13, color: "#aaa", marginTop: 2, fontWeight: 600 }}>Welcome back!</p>
             </div>
-            <div className="flex gap-2">
-              {["Today", "Week", "Month"].map((t, i) => (
-                <button
-                  key={t}
-                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
-                    i === 0
-                      ? "bg-[var(--color-accent)] text-white shadow-sm"
-                      : "text-white/40 hover:text-white hover:bg-white/10"
-                  }`}
-                >
-                  {t}
+            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <button style={{ padding: "8px 18px", borderRadius: 10, border: "1px solid #e5e7eb", background: "#fff", fontSize: 14, fontWeight: 700, color: "#333", cursor: "pointer" }}>
+                Subscription
+              </button>
+              <button style={{ padding: "8px 18px", borderRadius: 10, border: "1px solid #e5e7eb", background: "#fff", fontSize: 14, fontWeight: 700, color: "#333", cursor: "pointer" }}>
+                Analytics
+              </button>
+              <div style={{ position: "relative" }}>
+                <button style={{ width: 36, height: 36, borderRadius: 999, border: "1px solid #e5e7eb", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#555" }}>
+                  <FiBell size={16} />
                 </button>
-              ))}
+                {pendingCount > 0 && (
+                  <span style={{ position: "absolute", top: -2, right: -2, width: 16, height: 16, background: "#334877", borderRadius: 999, border: "2px solid #f4f5f7", fontSize: 8, color: "#fff", fontWeight: 900, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {pendingCount}
+                  </span>
+                )}
+              </div>
+              <button style={{ width: 36, height: 36, borderRadius: 999, border: "1px solid #e5e7eb", background: "#fff", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", color: "#555" }}>
+                <FiSettings size={16} />
+              </button>
+              <div style={{ width: 36, height: 36, borderRadius: 999, overflow: "hidden", border: "2px solid #e5e7eb" }}>
+                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=admin" alt="user" style={{ width: "100%", height: "100%" }} />
+              </div>
             </div>
           </div>
+        </Card>
 
-          <div
-            ref={chartRef}
-            className="flex items-end gap-2 h-[200px] px-2"
-          >
-            {hourlyData.map((d, i) => (
-              <div
-                key={i}
-                className="flex-1 flex flex-col items-center justify-end gap-2"
-              >
-                <span className="text-[11px] font-bold text-white/50">
-                  {d.count || ""}
-                </span>
-                <div
-                  className="chart-bar w-full rounded-t-lg bg-[var(--color-cream)] min-h-[4px] transition-all hover:opacity-80"
-                  style={{
-                    height: `${Math.max((d.count / maxCount) * 160, 4)}px`,
-                  }}
-                />
-                <span className="text-[10px] text-white/40 font-medium">
-                  {d.hour}
+        {/* STAT CARDS ROW */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+          {/* Pending Orders */}
+          <Card>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                  <span style={{ fontSize: 17 }}>🛒</span>
+                  <SectionLabel>Pending Orders</SectionLabel>
+                </div>
+                <div style={{ fontSize: 36, fontWeight: 900, color: "#1a1a2e", lineHeight: 1 }}>{String(pendingCount).padStart(2, "0")}</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <SectionLabel>Total {totalToday}</SectionLabel>
+              <span style={{ fontSize: 13, fontWeight: 800, color: "#555" }}>
+                {Math.round((pendingCount / totalToday) * 100)}%
+              </span>
+            </div>
+            <StripedBar pct={Math.round((pendingCount / totalToday) * 100)} color="#f5c518" />
+          </Card>
+
+          {/* Orders in Progress */}
+          <Card>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                  <span style={{ fontSize: 17 }}>📈</span>
+                  <SectionLabel>Orders in Progress</SectionLabel>
+                </div>
+                <div style={{ fontSize: 36, fontWeight: 900, color: "#1a1a2e", lineHeight: 1 }}>{String(inProgressCount).padStart(2, "0")}</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <SectionLabel>Total {totalToday}</SectionLabel>
+              <span style={{ fontSize: 13, fontWeight: 800, color: "#555" }}>
+                {Math.round((inProgressCount / totalToday) * 100)}%
+              </span>
+            </div>
+            <StripedBar pct={Math.round((inProgressCount / totalToday) * 100)} color="#4ade80" />
+          </Card>
+
+          {/* Available Tables */}
+          <Card>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 8 }}>
+              <div>
+                <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 4 }}>
+                  <span style={{ fontSize: 17 }}>🍽</span>
+                  <SectionLabel>Available Tables</SectionLabel>
+                </div>
+                <div style={{ fontSize: 36, fontWeight: 900, color: "#1a1a2e", lineHeight: 1 }}>{String(availableTables).padStart(2, "0")}</div>
+              </div>
+            </div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
+              <SectionLabel>Total Tables {tables.length}</SectionLabel>
+              <span style={{ fontSize: 13, fontWeight: 800, color: "#555" }}>
+                {tables.length > 0 ? Math.round((availableTables / tables.length) * 100) : 0}% Booked
+              </span>
+            </div>
+            <StripedBar pct={tables.length > 0 ? Math.round(((tables.length - availableTables) / tables.length) * 100) : 0} color="#fb923c" />
+          </Card>
+        </div>
+
+        {/* CHART ROW */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 16 }}>
+          {/* Total Revenue Chart */}
+          <Card>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
+              <div>
+                <div style={{ fontWeight: 900, fontSize: 17, color: "#1a1a2e" }}>Total Revenue</div>
+                <div style={{ fontSize: 13, color: "#aaa", fontWeight: 600, marginTop: 2 }}>Sales Overview</div>
+              </div>
+              <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "6px 12px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff", fontSize: 13, fontWeight: 700, color: "#555", cursor: "pointer" }}>
+                <FiCalendar size={12} /> This Month ▾
+              </button>
+            </div>
+
+            {/* Bar Chart */}
+            <div style={{ display: "flex", alignItems: "flex-end", gap: 0, height: 200, marginTop: 20, position: "relative" }}>
+              {/* Y-axis labels */}
+              <div style={{ display: "flex", flexDirection: "column", justifyContent: "space-between", height: "100%", marginRight: 10, paddingBottom: 24 }}>
+                {["1k","800","600","400","200","0"].map((l) => (
+                  <span key={l} style={{ fontSize: 11, color: "#ccc", fontWeight: 700, lineHeight: 1 }}>{l}</span>
+                ))}
+              </div>
+
+              {/* Bars */}
+              <div style={{ flex: 1, display: "flex", alignItems: "flex-end", gap: 6, height: "100%" }} ref={chartRef}>
+                {monthlyData.map((d, i) => {
+                  const h = Math.max((d.rev / maxRev) * 160, 6);
+                  return (
+                    <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", gap: 4, height: "100%" }}>
+                      {d.isCurrent && d.rev > 0 && (
+                        <div style={{
+                          background: "#1a1a2e", color: "#fff",
+                          fontSize: 11, fontWeight: 800,
+                          padding: "4px 8px", borderRadius: 8,
+                          whiteSpace: "nowrap", marginBottom: 4,
+                          display: "flex", alignItems: "center", gap: 4,
+                        }}>
+                          <span style={{ color: "#ff6b35", fontSize: 13 }}>●</span> ₹ {d.rev.toLocaleString()}
+                        </div>
+                      )}
+                      <motion.div
+                        initial={{ height: 0 }}
+                        animate={{ height: h }}
+                        transition={{ duration: 0.8, delay: i * 0.06, ease: "easeOut" }}
+                        style={{
+                          width: "100%",
+                          borderRadius: "6px 6px 0 0",
+                          background: d.isCurrent
+                            ? "#334877"
+                            : "#f0f0f0",
+                          backgroundImage: d.isCurrent
+                            ? "repeating-linear-gradient(45deg,rgba(255,255,255,0.15) 0,rgba(255,255,255,0.15) 4px,transparent 4px,transparent 8px)"
+                            : "none",
+                          flexShrink: 0,
+                        }}
+                      />
+                      <span style={{ fontSize: 11, color: d.isCurrent ? "#334877" : "#ccc", fontWeight: d.isCurrent ? 700 : 500 }}>
+                        {d.label}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </Card>
+
+          {/* Business Data */}
+          <Card style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+              <div style={{ fontWeight: 900, fontSize: 17, color: "#1a1a2e" }}>Business Data</div>
+              <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 10px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, fontWeight: 700, color: "#555", cursor: "pointer" }}>
+                <FiCalendar size={11} /> This Week ▾
+              </button>
+            </div>
+
+            {/* Customers */}
+            <div style={{ background: "#e8ecf4", borderRadius: 12, padding: "14px 16px", position: "relative" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 13, color: "#aaa", fontWeight: 700 }}>Number of Customers</span>
+                <FiArrowUpRight size={14} color="#aaa" />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                <FiUsers size={16} color="#555" />
+                <span style={{ fontSize: 24, fontWeight: 900, color: "#1a1a2e" }}>{todayOrders.length * 2 + completedCount}</span>
+              </div>
+            </div>
+
+            {/* Total Orders */}
+            <div style={{ background: "#fff8f5", borderRadius: 12, padding: "14px 16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 13, color: "#aaa", fontWeight: 700 }}>Total Orders</span>
+                <FiArrowUpRight size={14} color="#aaa" />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 6 }}>
+                <FiShoppingBag size={16} color="#555" />
+                <span style={{ fontSize: 24, fontWeight: 900, color: "#1a1a2e" }}>{todayOrders.length}</span>
+              </div>
+            </div>
+
+            {/* Average Order */}
+            <div style={{ background: "#f0fdf4", borderRadius: 12, padding: "14px 16px" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                <span style={{ fontSize: 13, color: "#aaa", fontWeight: 700 }}>Average Order Values</span>
+                <FiArrowUpRight size={14} color="#aaa" />
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: 4, marginTop: 6 }}>
+                <span style={{ fontSize: 19, fontWeight: 800, color: "#16a34a" }}>₹</span>
+                <span style={{ fontSize: 24, fontWeight: 900, color: "#1a1a2e" }}>
+                  {completedCount > 0 ? Math.round(todayRevenue / completedCount).toLocaleString() : 0}
                 </span>
               </div>
-            ))}
-          </div>
-        </motion.div>
+            </div>
+          </Card>
+        </div>
 
-        {/* Trending Items */}
-        <motion.div
-          variants={fadeUp}
-          className="bg-[var(--color-navy)] rounded-2xl p-6 shadow-lg border border-white/5"
-        >
-          <h3 className="font-japanese text-2xl font-bold text-white tracking-wide mb-1">
-            Trending Items
-          </h3>
-          <p className="text-white/50 text-sm mb-5 mt-1">
-            Top selling items today
-          </p>
+        {/* BOTTOM ROW: Recent Activity + Top Dishes */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+          {/* Recent Activity */}
+          <Card>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div style={{ fontWeight: 900, fontSize: 17, color: "#1a1a2e" }}>Recent Activity</div>
+              <button style={{ background: "none", border: "none", cursor: "pointer", color: "#aaa" }}>
+                <FiArrowUpRight size={18} />
+              </button>
+            </div>
 
-          {topItems.length > 0 ? (
-            <div className="space-y-4">
-              {topItems.map(([name, qty], i) => (
-                <motion.div
-                  key={name}
-                  initial={{ opacity: 0, x: 20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.3 + i * 0.1 }}
-                  className="flex items-center gap-3"
-                >
-                  <span className="w-7 h-7 bg-[var(--color-accent)]/20 rounded-lg flex items-center justify-center text-xs font-bold text-[var(--color-accent)]">
-                    #{i + 1}
-                  </span>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white/90 truncate">
-                      {name}
-                    </p>
-                    <div className="mt-1 h-1.5 bg-white/10 rounded-full overflow-hidden">
-                      <motion.div
-                        initial={{ width: 0 }}
-                        animate={{
-                          width: `${(qty / topItems[0][1]) * 100}%`,
-                        }}
-                        transition={{ duration: 0.8, delay: 0.5 + i * 0.1 }}
-                        className="h-full bg-[var(--color-cream)] rounded-full"
-                      />
+            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+              {recentActivity.length > 0 ? recentActivity.map((order, i) => (
+                <div key={order._id} style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 999, overflow: "hidden", flexShrink: 0, background: "#f0f0f0" }}>
+                    <img
+                      src={FOOD_IMGS[i % FOOD_IMGS.length]}
+                      alt="food"
+                      style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                    />
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 800, fontSize: 14, color: "#1a1a2e" }}>Status Changed</div>
+                    <div style={{ fontSize: 12, color: "#aaa", fontWeight: 600, marginTop: 2, display: "flex", alignItems: "center", gap: 6 }}>
+                      <span>₹ {order.totalAmount}</span>
+                      <span>#{order.orderNumber}</span>
+                      <FiClock size={10} />
+                      <span>
+                        {Math.round((Date.now() - new Date(order.createdAt)) / 60000)} min ago
+                      </span>
                     </div>
                   </div>
-                  <span className="text-sm font-bold text-white/60">
-                    {qty}x
-                  </span>
-                </motion.div>
-              ))}
+                  <StatusBadge status={order.status} />
+                </div>
+              )) : (
+                <div style={{ textAlign: "center", color: "#ccc", fontSize: 14, fontWeight: 700, padding: "24px 0" }}>
+                  No activity today
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-gray-300">
-              <FiCoffee size={40} />
-              <p className="text-sm mt-3 text-gray-400">No orders yet today</p>
+          </Card>
+
+          {/* Top Dishes */}
+          <Card>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
+              <div style={{ fontWeight: 900, fontSize: 17, color: "#1a1a2e" }}>Top Dishes</div>
+              <button style={{ display: "flex", alignItems: "center", gap: 6, padding: "5px 12px", borderRadius: 8, border: "1px solid #e5e7eb", background: "#fff", fontSize: 12, fontWeight: 700, color: "#555", cursor: "pointer" }}>
+                <FiCalendar size={11} /> This Month ▾
+              </button>
             </div>
-          )}
-        </motion.div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              {topItems.length > 0 ? topItems.map(([name, qty], i) => {
+                const pct = Math.round((qty / maxQty) * 100);
+                return (
+                  <div key={name} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    <div style={{ width: 32, height: 32, borderRadius: 8, overflow: "hidden", flexShrink: 0, background: "#f0f0f0" }}>
+                      <img
+                        src={FOOD_IMGS[i % FOOD_IMGS.length]}
+                        alt="dish"
+                        style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                      />
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: "#1a1a2e", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "60%" }}>{name}</span>
+                        <span style={{ fontSize: 13, fontWeight: 800, color: "#555", flexShrink: 0 }}>{qty}</span>
+                      </div>
+                      {/* Striped bar with arrow tip */}
+                      <div style={{ position: "relative", display: "flex", alignItems: "center", gap: 4 }}>
+                        <div style={{ flex: 1, height: 8, background: "#dde4f0", borderRadius: 4, overflow: "hidden" }}>
+                          <motion.div
+                            initial={{ width: 0 }}
+                            animate={{ width: `${pct}%` }}
+                            transition={{ duration: 1, delay: 0.3 + i * 0.07, ease: "easeOut" }}
+                            style={{
+                              height: "100%",
+                              background: "linear-gradient(90deg, #6b84c2, #334877)",
+                              backgroundImage: "repeating-linear-gradient(45deg,rgba(255,255,255,0.2) 0,rgba(255,255,255,0.2) 3px,transparent 3px,transparent 6px)",
+                              borderRadius: 4,
+                            }}
+                          />
+                        </div>
+                        {/* Arrow indicator */}
+                        <div style={{
+                          width: 16, height: 16, background: "#334877",
+                          borderRadius: 4, display: "flex", alignItems: "center",
+                          justifyContent: "center", flexShrink: 0,
+                        }}>
+                          <span style={{ color: "#fff", fontSize: 8, fontWeight: 900 }}>▶</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              }) : (
+                <div style={{ textAlign: "center", color: "#ccc", fontSize: 14, fontWeight: 700, padding: "24px 0" }}>
+                  No dishes yet
+                </div>
+              )}
+            </div>
+          </Card>
+        </div>
       </div>
 
-      {/* Recent Orders */}
-      <motion.div
-        variants={fadeUp}
-        className="bg-[var(--color-navy)] rounded-2xl shadow-lg border border-white/5 overflow-hidden"
-      >
-        <div className="p-6 pb-4 flex items-center justify-between">
-          <div>
-            <h3 className="font-japanese text-2xl font-bold text-white tracking-wide">
-              Recent Orders
-            </h3>
-            <p className="text-white/50 text-sm mt-1">Latest activity</p>
-          </div>
+      {/* ── RIGHT SIDEBAR (STORES / TABLES) ─────────────────────────────────── */}
+      <div style={{ width: 220, flexShrink: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingBottom: 4 }}>
+          <span style={{ fontWeight: 900, fontSize: 17, color: "#1a1a2e" }}>Tables</span>
+          <FiArrowUpRight size={16} color="#aaa" />
         </div>
 
-        {recentOrders.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="bg-white/5 border-b border-white/10">
-                <tr className="text-left text-white/40 font-medium text-xs uppercase tracking-wider">
-                  <th className="px-6 py-3">Order</th>
-                  <th className="px-6 py-3">Table</th>
-                  <th className="px-6 py-3">Items</th>
-                  <th className="px-6 py-3">Amount</th>
-                  <th className="px-6 py-3">Status</th>
-                  <th className="px-6 py-3">Time</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-white/5">
-                {recentOrders.map((order, i) => (
-                  <motion.tr
-                    key={order._id}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ delay: 0.1 * i }}
-                    className="hover:bg-white/5 transition-colors"
-                  >
-                    <td className="px-6 py-4 font-mono text-xs font-bold text-[var(--color-accent)]">
-                      {order.orderNumber}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="font-bold text-white/90">
-                        {order.tableNumber}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-white/60 max-w-[200px] truncate">
-                      {order.items
-                        .map((i) => `${i.qty}x ${i.name || "Item"}`)
-                        .join(", ")}
-                    </td>
-                    <td className="px-6 py-4 font-bold text-white">
-                      ₹{order.totalAmount}
-                    </td>
-                    <td className="px-6 py-4">
-                      <span
-                        className={`px-2.5 py-1 rounded-lg text-xs font-bold ${
-                          order.status === "pending"
-                            ? "bg-amber-500/20 text-amber-400"
-                            : order.status === "approved"
-                            ? "bg-blue-500/20 text-blue-400"
-                            : order.status === "completed"
-                            ? "bg-emerald-500/20 text-emerald-400"
-                            : "bg-red-500/20 text-red-400"
-                        }`}
-                      >
-                        {order.status.toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-white/40 text-xs">
-                      {new Date(order.createdAt).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      })}
-                    </td>
-                  </motion.tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-12 text-center text-white/30">
-            <FiShoppingBag size={40} className="mx-auto mb-3" />
-            <p className="text-white/40">No orders today yet</p>
-          </div>
-        )}
-      </motion.div>
-    </motion.div>
+        <div style={{ display: "flex", flexDirection: "column", gap: 12, overflowY: "auto", flex: 1 }}>
+          {tables.length > 0 ? tables.map((table, i) => {
+            const isOccupied = table.status === "occupied" || table.status === "payment_pending";
+            const imgs = [
+              "https://images.unsplash.com/photo-1414235077428-338989a2e8c0?w=300&h=150&fit=crop",
+              "https://images.unsplash.com/photo-1517248135467-4c7edcad34c4?w=300&h=150&fit=crop",
+              "https://images.unsplash.com/photo-1552566626-52f8b828add9?w=300&h=150&fit=crop",
+              "https://images.unsplash.com/photo-1559339352-11d035aa65de?w=300&h=150&fit=crop",
+            ];
+            return (
+              <div key={table._id} style={{
+                borderRadius: 14,
+                overflow: "hidden",
+                position: "relative",
+                height: 100,
+                cursor: "pointer",
+              }}>
+                {/* Background image */}
+                <img
+                  src={imgs[i % imgs.length]}
+                  alt="store"
+                  style={{ width: "100%", height: "100%", objectFit: "cover" }}
+                />
+                {/* Dark overlay */}
+                <div style={{
+                  position: "absolute", inset: 0,
+                  background: "linear-gradient(180deg, rgba(0,0,0,0.2) 0%, rgba(0,0,0,0.55) 100%)",
+                }} />
+                {/* Content */}
+                <div style={{
+                  position: "absolute", inset: 0, padding: "10px 12px",
+                  display: "flex", flexDirection: "column", justifyContent: "space-between",
+                }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                    <span style={{ color: "#fff", fontWeight: 800, fontSize: 14 }}>
+                      Table {table.tableNumber}
+                    </span>
+                    <span style={{
+                      background: isOccupied ? "#334877" : "#22c55e",
+                      color: "#fff", fontSize: 10, fontWeight: 900,
+                      padding: "2px 7px", borderRadius: 999,
+                    }}>
+                      {isOccupied ? "● Busy" : "● Open"}
+                    </span>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+                    <span style={{ fontSize: 13 }}>📍</span>
+                    <span style={{ color: "rgba(255,255,255,0.8)", fontSize: 12, fontWeight: 600 }}>
+                      {isOccupied ? "Occupied" : "Available"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            );
+          }) : (
+            <div style={{
+              padding: "40px 20px", textAlign: "center",
+              background: "#fff", borderRadius: 14,
+              color: "#ccc", fontSize: 14, fontWeight: 700,
+            }}>
+              No tables added yet
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
   );
 };
 

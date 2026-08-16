@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import axios from "axios";
+import apiClient from "../api/apiClient";
 import toast from "react-hot-toast";
 import { FiPlus, FiPrinter, FiDownload, FiTrash2, FiGrid } from "react-icons/fi";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
 const fadeUp = {
   hidden: { opacity: 0, y: 20 },
@@ -23,7 +22,7 @@ const TablesView = () => {
 
   const fetchTables = async () => {
     try {
-      const res = await axios.get(`${API_URL}/tables`);
+      const res = await apiClient.get('/tables');
       setTables(res.data);
     } catch (err) {
       toast.error("Failed to load tables");
@@ -35,7 +34,7 @@ const TablesView = () => {
     if (!newTableNumber) return;
 
     try {
-      await axios.post(`${API_URL}/tables`, { tableNumber: newTableNumber });
+      await apiClient.post('/tables', { tableNumber: newTableNumber });
       toast.success("Table added!");
       setNewTableNumber("");
       fetchTables();
@@ -47,7 +46,7 @@ const TablesView = () => {
   const handleGenerateQR = async (tableId) => {
     try {
       setSelectedTableId(tableId);
-      const res = await axios.get(`${API_URL}/tables/${tableId}/qr`);
+      const res = await apiClient.get(`/tables/${tableId}/qr`);
       setQrCodeData(res.data);
     } catch (err) {
       toast.error("Failed to generate QR");

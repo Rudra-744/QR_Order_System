@@ -7,12 +7,12 @@ const createOrderSchema = z.object({
     items: z.array(
       z.object({
         itemId: z.string().nonempty(),
-        name: z.string().nonempty(),
-        price: z.number().nonnegative(),
+        name: z.string().optional(),
+        price: z.number().optional(),
         qty: z.number().int().positive(),
       })
     ).min(1, { message: "Order must contain at least one item" }),
-    totalAmount: z.number().nonnegative(),
+    totalAmount: z.number().optional(),
     note: z.string().optional(),
   })
 });

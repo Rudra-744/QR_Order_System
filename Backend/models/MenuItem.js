@@ -8,9 +8,10 @@ const MenuItemSchema = new mongoose.Schema({
   isAvailable: { type: Boolean, default: true },
   imageUrl: { type: String, default: '' },
   description: { type: String, default: '' },
-  isBestseller: { type: Boolean, default: false }
+  isBestseller: { type: Boolean, default: false },
+  menuGroup: { type: String, default: 'Main Menu' }
 });
 
-MenuItemSchema.index({ restaurantId: 1, category: 1 });
+MenuItemSchema.index({ restaurantId: 1, menuGroup: 1, category: 1 });
 
 module.exports = mongoose.model('MenuItem', MenuItemSchema);

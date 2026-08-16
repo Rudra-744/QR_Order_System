@@ -1,6 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import gsap from "gsap";
 import { useAuth } from "../context/AuthContext";
 import { useNavigate } from "react-router-dom";
 import {
@@ -8,21 +7,24 @@ import {
   FiShoppingBag,
   FiCoffee,
   FiSettings,
-  FiLogOut,
   FiMenu,
   FiX,
   FiBarChart2,
   FiClock,
   FiLayers,
+  FiHelpCircle,
+  FiChevronDown,
+  FiMoreVertical,
 } from "react-icons/fi";
 
 const navItems = [
   { id: "overview", label: "Dashboard", icon: FiGrid, section: "Menu" },
   { id: "orders", label: "Orders", icon: FiShoppingBag, badge: true, section: "Menu" },
   { id: "tables", label: "Tables", icon: FiLayers, section: "Menu" },
-  { id: "menu", label: "Menus", icon: FiCoffee, section: "Menu" },
-  { id: "history", label: "Order History", icon: FiClock, section: "Menu" },
+  { id: "menu", label: "Kitchen", icon: FiCoffee, section: "Menu" },
+  { id: "history", label: "Menus", icon: FiMenu, section: "Menu" },
   { id: "analytics", label: "Analytics", icon: FiBarChart2, section: "Menu" },
+  { id: "help", label: "Help", icon: FiHelpCircle, section: "Others" },
   { id: "settings", label: "Settings", icon: FiSettings, section: "Others" },
 ];
 
@@ -30,17 +32,6 @@ const Sidebar = ({ activeView, setActiveView, pendingCount = 0 }) => {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const [mobileOpen, setMobileOpen] = useState(false);
-  const logoRef = useRef(null);
-
-  useEffect(() => {
-    if (logoRef.current) {
-      gsap.fromTo(
-        logoRef.current,
-        { scale: 0.8, opacity: 0 },
-        { scale: 1, opacity: 1, duration: 0.6, ease: "back.out(1.7)" }
-      );
-    }
-  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -51,69 +42,106 @@ const Sidebar = ({ activeView, setActiveView, pendingCount = 0 }) => {
   const otherItems = navItems.filter((i) => i.section === "Others");
 
   const sidebarContent = (
-    <div className="flex flex-col h-full">
-      {/* Logo */}
-      <div className="px-5 pt-6 pb-4">
-        <div ref={logoRef} className="flex items-center gap-3">
-          <div className="w-10 h-10 glass rounded-xl flex items-center justify-center">
-            <FiCoffee className="text-[var(--color-accent)]" size={20} />
-          </div>
-          <h1 className="font-japanese text-3xl font-bold text-white tracking-wide pt-1">
-            OrderFlow
-          </h1>
-        </div>
+    <div className="flex flex-col h-full" style={{ background: "#fff", borderRight: "1px solid #f0f0f0" }}>
+      {/* Brand Logo — exact D.CC style */}
+      <div className="flex items-center gap-3 px-5 py-6">
+        <span style={{ fontFamily: 'Rink, sans-serif', fontSize: 36, color: "#1a1a2e", lineHeight: 1, letterSpacing: 1, fontWeight: 800 }}>
+          rimi
+        </span>
       </div>
 
       {/* Store Selector */}
-      <div className="mx-4 mb-5">
-        <div className="flex items-center gap-3 px-3 py-3 bg-white/5 rounded-xl border border-white/10">
-          <div className="w-8 h-8 glass rounded-lg flex items-center justify-center text-[var(--color-accent)] font-bold text-xs">
-            {user?.username?.charAt(0)?.toUpperCase() || "R"}
+      <div className="px-4 mb-5">
+        <p style={{ fontSize: 12, fontWeight: 800, color: "#aaa", textTransform: "uppercase", letterSpacing: 1, paddingLeft: 4, marginBottom: 6 }}>
+          Store
+        </p>
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 10,
+            background: "#fafafa",
+            border: "1px solid #eee",
+            borderRadius: 10,
+            padding: "10px 12px",
+            cursor: "pointer",
+          }}
+        >
+          <div
+            style={{
+              width: 32,
+              height: 32,
+              borderRadius: 8,
+              overflow: "hidden",
+              background: "#eee",
+              flexShrink: 0,
+            }}
+          >
+            <img
+              src={`https://images.unsplash.com/photo-1567521464027-f127ff144326?w=64&h=64&fit=crop`}
+              alt="store"
+              style={{ width: "100%", height: "100%", objectFit: "cover" }}
+            />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-white text-sm truncate">
-              {user?.username || "Restaurant"}
-            </p>
-            <p className="text-[11px] text-emerald-400 font-medium">● Open</p>
-          </div>
+          <span style={{ flex: 1, fontWeight: 800, fontSize: 14, color: "#1a1a2e", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+            {user?.username || "Restaurant"}
+          </span>
+          <FiChevronDown size={14} color="#aaa" />
         </div>
       </div>
 
-      {/* Navigation - Menu Section */}
-      <nav className="flex-1 px-3 overflow-y-auto custom-scrollbar">
-        <p className="px-3 mb-2 text-[11px] font-semibold text-white/40 uppercase tracking-wider">
+      {/* Nav */}
+      <nav style={{ flex: 1, padding: "0 12px", overflowY: "auto" }}>
+        <p style={{ fontSize: 12, fontWeight: 800, color: "#aaa", textTransform: "uppercase", letterSpacing: 1, paddingLeft: 4, marginBottom: 8 }}>
           Menu
         </p>
-        <div className="space-y-0.5">
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {menuItems.map((item, index) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;
-
             return (
               <motion.button
                 key={item.id}
-                initial={{ opacity: 0, x: -15 }}
+                initial={{ opacity: 0, x: -10 }}
                 animate={{ opacity: 1, x: 0 }}
                 transition={{ delay: index * 0.04 }}
-                onClick={() => {
-                  setActiveView(item.id);
-                  setMobileOpen(false);
+                onClick={() => { setActiveView(item.id); setMobileOpen(false); }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  width: "100%",
+                  textAlign: "left",
+                  transition: "all 0.15s",
+                  background: isActive
+                    ? "#334877"
+                    : "transparent",
+                  color: isActive ? "#fff" : "#555",
+                  boxShadow: isActive ? "0 4px 12px rgba(51,72,119,0.25)" : "none",
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                  isActive
-                    ? "glass text-white"
-                    : "text-white/50 hover:text-white/80 hover:bg-white/5"
-                }`}
               >
-                <Icon size={18} className="flex-shrink-0" />
-                <span className="truncate">{item.label}</span>
+                <Icon size={17} strokeWidth={isActive ? 2.5 : 2} style={{ flexShrink: 0 }} />
+                <span style={{ flex: 1 }}>{item.label}</span>
                 {item.badge && pendingCount > 0 && (
                   <span
-                    className={`ml-auto min-w-[20px] h-[20px] flex items-center justify-center rounded-full text-[10px] font-bold ${
-                      isActive
-                        ? "bg-white/20 text-white"
-                        : "bg-white/15 text-white/80"
-                    }`}
+                    style={{
+                      minWidth: 20,
+                      height: 20,
+                      borderRadius: 999,
+                      background: isActive ? "rgba(255,255,255,0.25)" : "#334877",
+                      color: "#fff",
+                      fontSize: 11,
+                      fontWeight: 900,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
                   >
                     {pendingCount}
                   </span>
@@ -123,29 +151,36 @@ const Sidebar = ({ activeView, setActiveView, pendingCount = 0 }) => {
           })}
         </div>
 
-        {/* Others Section */}
-        <p className="px-3 mt-6 mb-2 text-[11px] font-semibold text-white/40 uppercase tracking-wider">
+        <p style={{ fontSize: 12, fontWeight: 800, color: "#aaa", textTransform: "uppercase", letterSpacing: 1, paddingLeft: 4, marginTop: 24, marginBottom: 8 }}>
           Others
         </p>
-        <div className="space-y-0.5">
+        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
           {otherItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeView === item.id;
-
             return (
               <button
                 key={item.id}
-                onClick={() => {
-                  setActiveView(item.id);
-                  setMobileOpen(false);
+                onClick={() => { if (item.id !== "help") setActiveView(item.id); setMobileOpen(false); }}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: 12,
+                  padding: "10px 14px",
+                  borderRadius: 10,
+                  border: "none",
+                  cursor: "pointer",
+                  fontSize: 14,
+                  fontWeight: 700,
+                  width: "100%",
+                  textAlign: "left",
+                  transition: "all 0.15s",
+                  background: isActive ? "#334877" : "transparent",
+                  color: isActive ? "#fff" : "#555",
+                  boxShadow: isActive ? "0 4px 12px rgba(51,72,119,0.25)" : "none",
                 }}
-                className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 ${
-                  isActive
-                    ? "glass text-white"
-                    : "text-white/50 hover:text-white/80 hover:bg-white/5"
-                }`}
               >
-                <Icon size={18} className="flex-shrink-0" />
+                <Icon size={17} strokeWidth={2} style={{ flexShrink: 0 }} />
                 <span>{item.label}</span>
               </button>
             );
@@ -153,28 +188,40 @@ const Sidebar = ({ activeView, setActiveView, pendingCount = 0 }) => {
         </div>
       </nav>
 
-      {/* Footer - User & Logout */}
-      <div className="p-3 mt-auto border-t border-white/10">
-        <div className="flex items-center gap-3 px-3 py-2">
-          <div className="w-9 h-9 bg-white/10 rounded-xl flex items-center justify-center">
+      {/* User Profile Footer — exact D.CC */}
+      <div style={{ padding: "12px 16px", borderTop: "1px solid #f0f0f0" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div style={{ position: "relative", flexShrink: 0 }}>
             <img
-              src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.username || "U"}&backgroundColor=d8684d&textColor=ffffff`}
+              src={`https://api.dicebear.com/7.x/initials/svg?seed=${user?.username || "A"}&backgroundColor=334877&textColor=ffffff`}
               alt="avatar"
-              className="w-9 h-9 rounded-xl"
+              style={{ width: 38, height: 38, borderRadius: 999 }}
+            />
+            <div
+              style={{
+                position: "absolute",
+                bottom: 0,
+                right: 0,
+                width: 10,
+                height: 10,
+                background: "#22c55e",
+                borderRadius: 999,
+                border: "2px solid #fff",
+              }}
             />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-semibold text-white text-sm truncate">
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <p style={{ fontWeight: 800, fontSize: 14, color: "#1a1a2e", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
               {user?.username || "Admin"}
             </p>
-            <p className="text-[11px] text-white/50">Admin</p>
+            <p style={{ fontSize: 12, color: "#aaa", fontWeight: 600 }}>Admin</p>
           </div>
           <button
             onClick={handleLogout}
-            className="p-2 rounded-lg text-white/40 hover:text-red-400 hover:bg-red-500/10 transition-all"
+            style={{ padding: 6, borderRadius: 8, border: "none", background: "transparent", cursor: "pointer", color: "#aaa" }}
             title="Logout"
           >
-            <FiLogOut size={16} />
+            <FiMoreVertical size={16} />
           </button>
         </div>
       </div>
@@ -186,26 +233,29 @@ const Sidebar = ({ activeView, setActiveView, pendingCount = 0 }) => {
       {/* Mobile Toggle */}
       <button
         onClick={() => setMobileOpen(!mobileOpen)}
-        className="fixed top-4 left-4 z-[60] lg:hidden p-2.5 bg-[var(--color-navy)] text-white rounded-xl shadow-md border border-white/10"
+        style={{
+          position: "fixed", top: 16, left: 16, zIndex: 60,
+          padding: "10px", background: "#fff", border: "1px solid #eee",
+          borderRadius: 10, cursor: "pointer", display: "none",
+        }}
+        className="lg:!hidden"
       >
         {mobileOpen ? <FiX size={20} /> : <FiMenu size={20} />}
       </button>
 
-      {/* Mobile Overlay */}
       <AnimatePresence>
         {mobileOpen && (
           <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             onClick={() => setMobileOpen(false)}
-            className="fixed inset-0 bg-black/20 backdrop-blur-sm z-40 lg:hidden"
+            style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.3)", zIndex: 40 }}
+            className="lg:hidden"
           />
         )}
       </AnimatePresence>
 
       {/* Desktop Sidebar */}
-      <aside className="hidden lg:flex flex-col h-screen bg-[var(--color-navy)] border-r border-white/5 w-[240px] flex-shrink-0">
+      <aside className="hidden lg:flex flex-col" style={{ width: 220, flexShrink: 0, height: "100vh" }}>
         {sidebarContent}
       </aside>
 
@@ -213,11 +263,10 @@ const Sidebar = ({ activeView, setActiveView, pendingCount = 0 }) => {
       <AnimatePresence>
         {mobileOpen && (
           <motion.aside
-            initial={{ x: "-100%" }}
-            animate={{ x: 0 }}
-            exit={{ x: "-100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed inset-y-0 left-0 z-50 w-[260px] bg-[var(--color-navy)] shadow-xl lg:hidden"
+            initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }}
+            transition={{ type: "spring", damping: 20, stiffness: 200 }}
+            style={{ position: "fixed", inset: 0, left: 0, top: 0, bottom: 0, width: 240, zIndex: 50 }}
+            className="lg:hidden"
           >
             {sidebarContent}
           </motion.aside>

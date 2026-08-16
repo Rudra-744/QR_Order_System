@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import gsap from "gsap";
-import axios from "axios";
+import { useQueryClient } from "@tanstack/react-query";
+import apiClient from "../api/apiClient";
 import toast from "react-hot-toast";
 import { useSocket } from "../context/SocketContext";
 import OrderTimer from "./OrderTimer";
@@ -13,7 +14,7 @@ import {
   FiBell,
 } from "react-icons/fi";
 
-const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
+
 
 const orderCardVariants = {
   initial: { opacity: 0, y: 40, scale: 0.95 },
@@ -31,18 +32,15 @@ const orderCardVariants = {
   },
 };
 
-const LiveOrders = ({ orders, setOrders, fetchOrders }) => {
+const LiveOrders = ({ orders }) => {
   const socket = useSocket();
+  const queryClient = useQueryClient();
   const bellRef = useRef(null);
 
   useEffect(() => {
     if (!socket) return;
 
     const handleNewOrder = (newOrder) => {
-      setOrders((prev) => {
-        if (prev.find((o) => o._id === newOrder._id)) return prev;
-        return [newOrder, ...prev];
-      });
       toast.success(`New Order: Table ${newOrder.tableNumber} 🔔`);
 
       if (bellRef.current) {
@@ -61,31 +59,24 @@ const LiveOrders = ({ orders, setOrders, fetchOrders }) => {
       }
     };
 
-    const handleUpdateOrder = (updatedOrder) => {
-      setOrders((prev) =>
-        prev.map((o) => (o._id === updatedOrder._id ? updatedOrder : o))
-      );
-    };
-
     socket.on("order:created", handleNewOrder);
-    socket.on("order:update", handleUpdateOrder);
 
     return () => {
       socket.off("order:created", handleNewOrder);
-      socket.off("order:update", handleUpdateOrder);
     };
   }, [socket]);
 
   const handleStatus = async (id, status) => {
-    setOrders((prev) =>
+    // Optimistic update
+    queryClient.setQueryData(['orders'], (prev = []) =>
       prev.map((o) => (o._id === id ? { ...o, status } : o))
     );
     try {
-      await axios.put(`${API_URL}/admin/orders/${id}/status`, { status });
+      await apiClient.put(`/admin/orders/${id}/status`, { status }, { silent: true });
       toast.success(`Order ${status}`);
     } catch (err) {
-      toast.error("Failed to update");
-      fetchOrders();
+      toast.error("Failed to update status");
+      queryClient.invalidateQueries({ queryKey: ['orders'] });
     }
   };
 
@@ -101,7 +92,7 @@ const LiveOrders = ({ orders, setOrders, fetchOrders }) => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <h1 className="font-japanese text-5xl font-bold text-[var(--color-navy)] tracking-wide">
+          <h1 className="font-sans text-3xl font-bold text-[var(--color-navy)] tracking-tight">
             Live Orders
           </h1>
           <motion.div
@@ -109,12 +100,12 @@ const LiveOrders = ({ orders, setOrders, fetchOrders }) => {
             className="relative"
             style={{ transformOrigin: "top center" }}
           >
-            <FiBell size={24} className="text-[var(--color-cream)]" />
+            <FiBell size={24} className="text-gray-400" />
             {pendingOrders.length > 0 && (
               <motion.span
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
-                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center"
+                className="absolute -top-1.5 -right-1.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-white"
               >
                 {pendingOrders.length}
               </motion.span>
@@ -129,10 +120,10 @@ const LiveOrders = ({ orders, setOrders, fetchOrders }) => {
       {/* Pending Orders */}
       <section>
         <div className="flex items-center gap-3 mb-5">
-          <div className="w-2 h-8 bg-[var(--color-accent)] rounded-full" />
-          <h2 className="font-japanese text-3xl font-bold text-[var(--color-navy)] tracking-wide">New Orders</h2>
+          <div className="w-2 h-6 bg-[var(--color-accent)] rounded-full" />
+          <h2 className="font-sans text-xl font-bold text-gray-900 tracking-tight">New Orders</h2>
           {pendingOrders.length > 0 && (
-            <span className="bg-amber-100 text-amber-700 text-sm font-bold px-3 py-1 rounded-full animate-pulse">
+            <span className="bg-orange-50 text-[var(--color-accent)] text-sm font-bold px-3 py-1 rounded-full animate-pulse">
               {pendingOrders.length}
             </span>
           )}
@@ -142,15 +133,15 @@ const LiveOrders = ({ orders, setOrders, fetchOrders }) => {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="bg-[var(--color-navy)] border border-white/10 shadow-lg rounded-2xl p-16 text-center"
+            className="bg-white border border-gray-100 shadow-sm rounded-2xl p-16 text-center"
           >
-            <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mx-auto mb-4">
-              <FiCoffee className="text-white/20" size={36} />
+            <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <FiCoffee className="text-gray-300" size={32} />
             </div>
-            <p className="text-white/80 font-medium text-lg">
+            <p className="text-gray-500 font-bold text-lg">
               No pending orders
             </p>
-            <p className="text-white/40 text-sm mt-1">
+            <p className="text-gray-400 text-sm mt-1 font-medium">
               New orders will appear here in real time
             </p>
           </motion.div>
@@ -165,22 +156,22 @@ const LiveOrders = ({ orders, setOrders, fetchOrders }) => {
                   initial="initial"
                   animate="animate"
                   exit="exit"
-                  className="bg-[var(--color-navy)] rounded-2xl border border-white/10 overflow-hidden shadow-lg hover:shadow-[var(--color-accent)]/20 transition-shadow duration-300 group"
+                  className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300 group"
                 >
                   {/* Card Header */}
-                  <div className="p-5 border-b border-white/5">
+                  <div className="p-5 border-b border-gray-50">
                     <div className="flex items-center justify-between">
                       <div>
-                        <span className="text-[11px] font-bold text-white/40 uppercase tracking-wider">
+                        <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                           Table
                         </span>
-                        <div className="font-japanese text-4xl text-white font-bold -mt-1 tracking-wider">
+                        <div className="font-sans text-3xl text-gray-900 font-bold tracking-tight">
                           {order.tableNumber}
                         </div>
                       </div>
                       <div className="flex items-center gap-2">
                         <OrderTimer startTime={order.createdAt} />
-                        <span className="bg-[var(--color-accent)] text-white text-[10px] font-bold px-2.5 py-1 rounded-lg">
+                        <span className="bg-orange-50 text-[var(--color-accent)] text-[10px] font-bold px-2.5 py-1 rounded-lg">
                           NEW
                         </span>
                       </div>
@@ -188,47 +179,47 @@ const LiveOrders = ({ orders, setOrders, fetchOrders }) => {
                   </div>
 
                   {/* Items */}
-                  <div className="p-5 space-y-2.5">
+                  <div className="p-5 space-y-3">
                     {order.items.map((item, idx) => (
                       <div
                         key={idx}
                         className="flex justify-between items-center text-sm"
                       >
-                        <div className="flex items-center gap-2.5">
-                          <span className="w-7 h-7 bg-[var(--color-accent)]/20 rounded-lg flex items-center justify-center text-xs font-bold text-[var(--color-accent)]">
+                        <div className="flex items-center gap-3">
+                          <span className="w-6 h-6 bg-gray-50 rounded flex items-center justify-center text-xs font-bold text-gray-600">
                             {item.qty}
                           </span>
-                          <span className="font-medium text-white/90">
+                          <span className="font-bold text-gray-800">
                             {item.name || "Item"}
                           </span>
                         </div>
-                        <span className="text-white/60 font-medium">
+                        <span className="text-gray-500 font-bold">
                           ₹{item.price ? item.price * item.qty : ""}
                         </span>
                       </div>
                     ))}
                     {order.note && (
-                      <div className="bg-amber-500/10 text-amber-300 text-sm p-3 rounded-xl mt-3 border border-amber-500/20">
+                      <div className="bg-orange-50 text-[var(--color-accent)] text-sm p-3 rounded-xl mt-3 font-medium">
                         📝 {order.note}
                       </div>
                     )}
-                    <div className="flex justify-between items-center pt-3 border-t border-white/5 mt-2">
-                      <span className="text-xs font-medium text-white/50 uppercase tracking-wider">
+                    <div className="flex justify-between items-center pt-4 border-t border-gray-50 mt-2">
+                      <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">
                         Total
                       </span>
-                      <span className="font-japanese font-bold text-[var(--color-accent)] text-3xl">
+                      <span className="font-sans font-bold text-gray-900 text-2xl">
                         ₹{order.totalAmount}
                       </span>
                     </div>
                   </div>
 
                   {/* Actions */}
-                  <div className="p-4 bg-white/5 flex gap-3 border-t border-white/5">
+                  <div className="p-4 bg-gray-50/50 flex gap-3 border-t border-gray-50">
                     <motion.button
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.97 }}
                       onClick={() => handleStatus(order._id, "rejected")}
-                      className="flex-1 py-3 text-red-400 font-semibold rounded-xl border border-white/10 bg-white/5 hover:bg-red-500/20 hover:border-red-500/50 transition-all text-sm flex items-center justify-center gap-2"
+                      className="flex-1 py-2.5 text-red-500 font-bold rounded-xl border border-red-100 bg-white hover:bg-red-50 transition-all text-sm flex items-center justify-center gap-2"
                     >
                       <FiX size={16} /> Reject
                     </motion.button>
@@ -236,7 +227,7 @@ const LiveOrders = ({ orders, setOrders, fetchOrders }) => {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.97 }}
                       onClick={() => handleStatus(order._id, "approved")}
-                      className="flex-1 py-3 bg-[var(--color-accent)] text-white font-semibold rounded-xl hover:bg-[var(--color-accent)]/90 transition-all text-sm flex items-center justify-center gap-2 shadow-lg"
+                      className="flex-1 py-2.5 bg-[var(--color-accent)] text-white font-bold rounded-xl hover:bg-orange-600 transition-all text-sm flex items-center justify-center gap-2 shadow-sm"
                     >
                       <FiCheck size={16} /> Accept
                     </motion.button>
@@ -250,21 +241,21 @@ const LiveOrders = ({ orders, setOrders, fetchOrders }) => {
 
       {/* Preparing Orders */}
       <section>
-        <div className="flex items-center gap-3 mb-5">
-          <div className="w-2 h-8 bg-emerald-500 rounded-full" />
-          <h2 className="font-japanese text-3xl font-bold text-[var(--color-navy)] tracking-wide">
+        <div className="flex items-center gap-3 mb-5 mt-8">
+          <div className="w-2 h-6 bg-emerald-500 rounded-full" />
+          <h2 className="font-sans text-xl font-bold text-gray-900 tracking-tight">
             Kitchen Preparing
           </h2>
           {acceptedOrders.length > 0 && (
-            <span className="bg-emerald-100 text-emerald-700 text-sm font-bold px-3 py-1 rounded-full">
+            <span className="bg-emerald-50 text-emerald-600 text-sm font-bold px-3 py-1 rounded-full">
               {acceptedOrders.length}
             </span>
           )}
         </div>
 
         {acceptedOrders.length === 0 ? (
-          <div className="bg-[var(--color-navy)] border border-white/10 rounded-2xl p-10 text-center shadow-lg">
-            <p className="text-white/40 font-medium">
+          <div className="bg-white border border-gray-100 rounded-2xl p-10 text-center shadow-sm">
+            <p className="text-gray-400 font-bold">
               No orders being prepared
             </p>
           </div>
@@ -279,14 +270,14 @@ const LiveOrders = ({ orders, setOrders, fetchOrders }) => {
                   initial="initial"
                   animate="animate"
                   exit="exit"
-                  className="bg-[var(--color-navy)] rounded-2xl border border-white/10 overflow-hidden shadow-lg"
+                  className="bg-white rounded-2xl border border-gray-100 overflow-hidden shadow-sm hover:shadow-md transition-shadow duration-300"
                 >
-                  <div className="p-5 flex justify-between items-center border-b border-white/5">
+                  <div className="p-5 flex justify-between items-center border-b border-gray-50">
                     <div>
-                      <span className="text-[11px] font-bold text-white/40 uppercase tracking-wider">
+                      <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
                         Table
                       </span>
-                      <div className="font-japanese text-4xl text-white font-bold -mt-1 tracking-wider">
+                      <div className="font-sans text-3xl text-gray-900 font-bold tracking-tight">
                         {order.tableNumber}
                       </div>
                     </div>
@@ -296,16 +287,16 @@ const LiveOrders = ({ orders, setOrders, fetchOrders }) => {
                   </div>
 
                   <div className="p-5">
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       {order.items.map((item, idx) => (
                         <div
                           key={idx}
-                          className="flex items-center gap-2.5 text-sm"
+                          className="flex items-center gap-3 text-sm"
                         >
-                          <span className="w-7 h-7 bg-emerald-500/20 rounded-lg flex items-center justify-center text-xs font-bold text-emerald-400">
+                          <span className="w-6 h-6 bg-emerald-50 rounded flex items-center justify-center text-xs font-bold text-emerald-600">
                             {item.qty}
                           </span>
-                          <span className="font-medium text-white/90">
+                          <span className="font-bold text-gray-800">
                             {item.name || "Item"}
                           </span>
                         </div>
@@ -318,7 +309,7 @@ const LiveOrders = ({ orders, setOrders, fetchOrders }) => {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.97 }}
                       onClick={() => handleStatus(order._id, "completed")}
-                      className="w-full py-3 bg-emerald-500 text-white font-semibold rounded-xl hover:bg-emerald-600 transition-all text-sm flex items-center justify-center gap-2"
+                      className="w-full py-3 bg-emerald-500 text-white font-bold rounded-xl hover:bg-emerald-600 transition-all text-sm flex items-center justify-center gap-2 shadow-sm"
                     >
                       ✓ Food Ready
                     </motion.button>

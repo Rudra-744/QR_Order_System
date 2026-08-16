@@ -1,9 +1,8 @@
 const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const { JWT_SECRET } = require("../config/jwt");
 
-const SECRET_KEY =
-  process.env.JWT_SECRET || "mrsjhakitchen_secret_key_change_this";
-
+// Strict auth — returns 401 if no/invalid token
 const protect = async (req, res, next) => {
   let token = req.cookies.token;
 
@@ -16,7 +15,7 @@ const protect = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, SECRET_KEY);
+    const decoded = jwt.verify(token, JWT_SECRET);
     req.user = await User.findById(decoded.id).select("-password");
 
     if (!req.user) {
@@ -29,4 +28,28 @@ const protect = async (req, res, next) => {
   }
 };
 
-module.exports = { protect };
+// Optional auth — attaches req.user if a valid token is present, otherwise continues without it.
+// Used for endpoints that serve both authenticated admins and unauthenticated customers.
+const optionalProtect = async (req, res, next) => {
+  let token = req.cookies.token;
+
+  if (req.headers.authorization && req.headers.authorization.startsWith("Bearer")) {
+    token = req.headers.authorization.split(" ")[1];
+  }
+
+  if (!token) {
+    return next(); // No token — continue without user context
+  }
+
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findById(decoded.id).select("-password");
+    if (user) req.user = user;
+  } catch {
+    // Invalid token — silently continue without user context (don't block customers)
+  }
+
+  next();
+};
+
+module.exports = { protect, optionalProtect };

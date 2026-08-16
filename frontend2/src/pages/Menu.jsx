@@ -1,9 +1,12 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import axios from "axios";
 import { v4 as uuidv4 } from "uuid";
-import { useSocket } from "../context/SocketContext";
+import { useMenu, usePlaceOrder, useOrderStatus } from "../api/queries";
+import apiClient from "../api/apiClient";
 import { AnimatePresence, motion } from "framer-motion";
+import { Toaster, toast } from "react-hot-toast";
+import { useCart } from "../hooks/useCart";
+import { useActiveOrders } from "../hooks/useActiveOrders";
 
 // Custom Components
 import MenuHeader from "../components/customer/MenuHeader";
@@ -12,6 +15,8 @@ import MenuItemCard from "../components/customer/MenuItemCard";
 import ItemDetailView from "../components/customer/ItemDetailView";
 import OrderStatusOverlay from "../components/customer/OrderStatusOverlay";
 import CartOverlay from "../components/customer/CartOverlay";
+import { Helmet } from "react-helmet-async";
+import SkeletonCard from "../components/ui/SkeletonCard";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000/api";
 
@@ -20,132 +25,91 @@ const Menu = () => {
   const tableNumber = searchParams.get("table");
   const restaurantId = searchParams.get("restaurantId");
 
-  const [menu, setMenu] = useState([]);
-  const [cart, setCart] = useState({});
+  const { data: menu = [], isLoading: isMenuLoading, isError: isMenuError, error: menuError } = useMenu(restaurantId);
+  const placeOrderMutation = usePlaceOrder();
+  const idempotencyKeyRef = useRef(uuidv4());
+  
+  const { cart, addToCart, removeFromCart, clearCart } = useCart(restaurantId, tableNumber, menu);
+  const { activeOrderIds, addOrderId, clearOrders } = useActiveOrders(restaurantId, tableNumber);
+
   const [activeCategory, setActiveCategory] = useState("All");
   const [selectedItem, setSelectedItem] = useState(null);
   const [isCartOpen, setIsCartOpen] = useState(false);
 
-  const [orderStatus, setOrderStatus] = useState(null);
-  const [orderId, setOrderId] = useState(null);
+  // Track the status of the most recently placed order for the overlay
+  const [currentOrderStatus, setCurrentOrderStatus] = useState(null);
+  const [currentOrderId, setCurrentOrderId] = useState(null);
   const [note, setNote] = useState("");
+  const [showOrderOverlay, setShowOrderOverlay] = useState(false);
 
-  const orderIdRef = useRef(null);
-  const socket = useSocket();
-
-  useEffect(() => {
-    orderIdRef.current = orderId;
-  }, [orderId]);
+  const { data: polledOrder, refetch: checkStatusManually } = useOrderStatus(currentOrderId, idempotencyKeyRef.current);
 
   useEffect(() => {
-    const fetchMenu = async () => {
-      if (!restaurantId) return;
-      try {
-        const res = await axios.get(`${API_URL}/menu?restaurantId=${restaurantId}`);
-        setMenu(res.data);
-      } catch (err) {
-        console.error("Menu fetch error", err);
+    // Also if we have active orders from a previous session, we could fetch their statuses.
+    // For simplicity, we just resume tracking if they exist.
+    if (activeOrderIds.length > 0 && !currentOrderId) {
+      const lastOrderId = activeOrderIds[activeOrderIds.length - 1];
+      setCurrentOrderId(lastOrderId);
+      setCurrentOrderStatus("pending"); // assume pending until polledOrder fetches
+    }
+  }, [activeOrderIds, currentOrderId]);
+
+  useEffect(() => {
+    if (polledOrder?.status) {
+      if (polledOrder.status === "approved" && currentOrderStatus !== "approved" && navigator.vibrate) {
+        navigator.vibrate([200, 100, 200]);
       }
+      setCurrentOrderStatus(polledOrder.status);
+    }
+  }, [polledOrder?.status, currentOrderStatus]);
+
+  const handleAddToCart = useCallback((item) => {
+    addToCart(item);
+    toast.success(`${item.name} added to cart!`);
+  }, [addToCart]);
+
+  const placeOrder = () => {
+    if (!navigator.onLine) {
+      toast.error("You are offline. Please reconnect to the internet to place your order.", { id: 'offline-block' });
+      return;
+    }
+    if (!tableNumber || !restaurantId) {
+      toast.error("Invalid QR code!");
+      return;
+    }
+    
+    const cartItems = Object.values(cart);
+
+    const payload = {
+      restaurantId,
+      tableNumber: parseInt(tableNumber),
+      items: cartItems.map((i) => ({
+        itemId: i._id,
+        name: i.name,
+        qty: i.qty,
+      })),
+      note: note,
     };
-    fetchMenu();
-  }, [restaurantId]);
 
-  useEffect(() => {
-    if (!socket || !tableNumber || !restaurantId) return;
-
-    const joinRoom = () => {
-      socket.emit("join_table_restaurant", { restaurantId, tableNumber });
-    };
-
-    joinRoom();
-    socket.on("connect", joinRoom);
-
-    const handleStatusUpdate = (updatedOrder) => {
-      if (
-        orderIdRef.current &&
-        String(updatedOrder._id) === String(orderIdRef.current)
-      ) {
-        setOrderStatus(updatedOrder.status);
-
-        if (updatedOrder.status === "approved" && navigator.vibrate) {
-          navigator.vibrate([200, 100, 200]);
+    placeOrderMutation.mutate(
+      { data: payload, idempotencyKey: idempotencyKeyRef.current },
+      {
+        onSuccess: (res) => {
+          setCurrentOrderId(res._id);
+          addOrderId(res._id);
+          setCurrentOrderStatus("pending");
+          setShowOrderOverlay(true);
+          clearCart();
+          setIsCartOpen(false);
+          setNote("");
+          idempotencyKeyRef.current = uuidv4();
+        },
+        onError: (err) => {
+          const message = err.response?.data?.message || "Failed to place order. Please try again.";
+          toast.error(message, { id: 'order-fail' });
         }
       }
-    };
-
-    socket.on("order:update", handleStatusUpdate);
-
-    return () => {
-      socket.off("connect", joinRoom);
-      socket.off("order:update", handleStatusUpdate);
-    };
-  }, [socket, tableNumber, restaurantId]);
-
-  const checkStatusManually = async () => {
-    if (!orderId) return;
-    try {
-      const res = await axios.get(`${API_URL}/orders/${orderId}`);
-      setOrderStatus(res.data.status);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
-  const addToCart = (item) => {
-    setCart((prev) => ({
-      ...prev,
-      [item._id]: { ...item, qty: (prev[item._id]?.qty || 0) + (item.qty || 1) },
-    }));
-  };
-
-  const removeFromCart = (itemId) => {
-    setCart((prev) => {
-      const newCart = { ...prev };
-      if (newCart[itemId].qty > 1) {
-        newCart[itemId].qty -= 1;
-      } else {
-        delete newCart[itemId];
-      }
-      return newCart;
-    });
-  };
-
-  const placeOrder = async () => {
-    if (!tableNumber) return alert("Please scan a valid QR code!");
-    try {
-      const cartItems = Object.values(cart);
-      const totalAmount = cartItems.reduce(
-        (acc, item) => acc + item.price * item.qty,
-        0
-      );
-
-      const payload = {
-        restaurantId,
-        tableNumber: parseInt(tableNumber),
-        items: cartItems.map((i) => ({
-          itemId: i._id,
-          name: i.name,
-          price: i.price,
-          qty: i.qty,
-        })),
-        note: note,
-        totalAmount: totalAmount,
-      };
-
-      const idempotencyKey = uuidv4();
-
-      const res = await axios.post(`${API_URL}/orders`, payload, {
-        headers: { "Idempotency-Key": idempotencyKey },
-      });
-
-      setOrderId(res.data._id);
-      orderIdRef.current = res.data._id;
-      setOrderStatus("pending");
-      setCart({});
-      setIsCartOpen(false);
-    } catch (err) {
-      alert("Failed to place order.");
-    }
+    );
   };
 
   const categories = ["All", ...new Set(menu.map((i) => i.category))];
@@ -156,19 +120,58 @@ const Menu = () => {
 
   const cartItemCount = Object.values(cart).reduce((sum, item) => sum + item.qty, 0);
 
-  if (!menu.length) {
+  if (isMenuError) {
+    const is404 = menuError?.response?.status === 404 || menuError?.response?.status === 400;
+    if (is404) {
+      return (
+        <div className="h-screen flex flex-col items-center justify-center bg-[#ece4d8] p-6 text-center">
+          <h2 className="text-2xl font-bold text-red-600 mb-2">Invalid QR Code</h2>
+          <p className="text-gray-600 font-medium">This restaurant or table could not be found. Please scan a valid QR code.</p>
+        </div>
+      );
+    }
     return (
-      <div className="h-screen flex items-center justify-center bg-[var(--color-cream)]">
-        <div className="animate-pulse flex flex-col items-center">
-          <div className="w-16 h-16 border-4 border-[var(--color-navy)] border-t-transparent rounded-full animate-spin"></div>
-          <p className="mt-4 text-[var(--color-navy)] font-japanese text-2xl font-bold">Loading Menu...</p>
+      <div className="h-screen flex flex-col items-center justify-center bg-[#ece4d8] p-6 text-center">
+        <h2 className="text-2xl font-bold text-red-600 mb-2">Oops, something went wrong.</h2>
+        <p className="text-gray-600 mb-6 font-medium">We couldn't load the menu. Please check your connection and try again.</p>
+        <button onClick={() => window.location.reload()} className="px-6 py-3 bg-[#334877] text-white font-bold rounded-xl active:scale-95 transition-transform">
+          Retry
+        </button>
+      </div>
+    );
+  }
+
+  if (isMenuLoading) {
+    return (
+      <div className="min-h-screen bg-[#ece4d8] font-sans relative p-6 pt-24">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
         </div>
       </div>
     );
   }
 
+  if (!menu.length) {
+    return (
+      <div className="h-screen flex items-center justify-center bg-[#ece4d8]">
+        <p className="mt-4 text-[#334877] font-japanese text-2xl font-bold">No menu items found.</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-[var(--color-cream)] font-sans relative overflow-x-hidden">
+    <div className="min-h-screen bg-[#ece4d8] font-sans relative overflow-x-hidden">
+      <Helmet>
+        <title>Rimi - Premium QR Dining Menu</title>
+        <meta name="description" content="Browse our premium menu and order directly from your phone. Enjoy seamless, contactless dining with Rimi." />
+        <meta property="og:title" content="Rimi - Premium QR Dining Menu" />
+        <meta property="og:description" content="Browse our premium menu and order directly from your phone. Enjoy seamless, contactless dining with Rimi." />
+      </Helmet>
       {/* 1. Header */}
       <MenuHeader 
         cartCount={cartItemCount} 
@@ -183,15 +186,12 @@ const Menu = () => {
       />
 
       {/* 3. Main Grid */}
-      <main className="px-6 py-6 pb-32">
-        <AnimatePresence mode="wait">
+      <main className="px-6 py-6 pb-32 min-h-[60vh]">
           <motion.div 
-            key={activeCategory}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             transition={{ duration: 0.2 }}
-            className="grid grid-cols-2 gap-4"
+            className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 sm:gap-6 max-w-7xl mx-auto"
           >
             {filteredMenu.map((item, index) => (
               <MenuItemCard 
@@ -199,10 +199,10 @@ const Menu = () => {
                 item={item} 
                 onClick={setSelectedItem}
                 delay={index * 0.03}
+                isPriority={index < 2}
               />
             ))}
           </motion.div>
-        </AnimatePresence>
       </main>
 
       {/* 4. Detail View Overlay */}
@@ -212,7 +212,7 @@ const Menu = () => {
             item={selectedItem}
             onBack={() => setSelectedItem(null)}
             onAddToCart={(itemWithQty) => {
-              addToCart(itemWithQty);
+              handleAddToCart(itemWithQty);
               setSelectedItem(null);
             }}
           />
@@ -224,32 +224,30 @@ const Menu = () => {
         isOpen={isCartOpen}
         onClose={() => setIsCartOpen(false)}
         cart={cart}
-        addToCart={addToCart}
+        addToCart={handleAddToCart}
         removeFromCart={removeFromCart}
         placeOrder={placeOrder}
         note={note}
         setNote={setNote}
+        isPlacingOrder={placeOrderMutation.isPending}
       />
 
       {/* 6. Order Status Overlay */}
       <AnimatePresence>
-        {orderStatus && (
+        {showOrderOverlay && currentOrderStatus && (
           <OrderStatusOverlay 
-            status={orderStatus}
+            status={currentOrderStatus}
             checkStatusManually={checkStatusManually}
             onOrderMore={() => {
-              setOrderStatus(null);
-              setOrderId(null);
-              orderIdRef.current = null;
-              setNote("");
+              setShowOrderOverlay(false);
             }}
             onBackToMenu={() => {
-              setOrderStatus(null);
-              setCart({});
+              setShowOrderOverlay(false);
             }}
           />
         )}
       </AnimatePresence>
+      <Toaster position="top-center" />
     </div>
   );
 };
